@@ -20,10 +20,9 @@ Not in Phase 1: Stripe Connect and card on file, upgrade products, checkout, che
 ## Setup
 
 ### 1. GitHub
-Create an empty private repo on your personal account (e.g. `ontour-upgrades`), then from this folder:
+Repo: https://github.com/edmondmeehan/upgrades (private, on Eddie's personal account). The remote is already set, so from this folder:
 
 ```bash
-git remote add origin https://github.com/YOUR-USERNAME/ontour-upgrades.git
 git push -u origin main
 ```
 
