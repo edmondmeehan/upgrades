@@ -1,0 +1,77 @@
+# OnTour Upgrades
+
+Self-serve VIP upgrades for artists, by Please & Thank You. Lives at **upgrades.ontour.vip**.
+
+Stack: Next.js 15 (App Router, TypeScript) on Vercel, Supabase (Postgres, Auth, row-level security), Tailwind CSS 4, Resend for app email.
+
+## Phase 1 (this build)
+
+- Sign up, sign in (password or emailed link), account page
+- Roles: P&T Super Admin, Artist (owner), Artist Rep, Accountant. Permissions are enforced in the database with row-level security, not just in the UI
+- Artist setup: name, storefront handle, website
+- Tours and shows: create, edit, publish, unpublish, cancel, delete drafts
+- Team: owner invites reps and accountants by email; invite links expire in 14 days
+- Verification: official website and socials, plus one proof (posted or DM'd code, domain-matching email, or one-click confirmation by manager, agent, or label)
+- P&T admin: review queue, checklist, approve, request changes, suspend, reinstate, per-artist fee override, managed-program flag, "open their account" (logged), audit log
+- Public storefront at `/{handle}` showing published upcoming shows, only once approved
+
+Not in Phase 1: Stripe Connect and card on file, upgrade products, checkout, check-in emails, passes, scanning, photos, settlements, superfans, follow alerts.
+
+## Setup
+
+### 1. GitHub
+Create an empty private repo on your personal account (e.g. `ontour-upgrades`), then from this folder:
+
+```bash
+git remote add origin https://github.com/YOUR-USERNAME/ontour-upgrades.git
+git push -u origin main
+```
+
+### 2. Supabase
+1. Create a new project, separate from the photos app.
+2. SQL editor: paste and run `supabase/migrations/20260929000001_phase1.sql`.
+   (Or with the CLI: `supabase link`, then `supabase db push`.)
+3. Authentication > URL Configuration:
+   - Site URL: `https://upgrades.ontour.vip`
+   - Redirect URLs: `https://upgrades.ontour.vip/auth/callback`, `http://localhost:3000/auth/callback`, and your Vercel preview pattern (`https://*-YOUR-TEAM.vercel.app/auth/callback`)
+4. Authentication > Emails > SMTP: use the same sender as photos@ontour.vip (e.g. Resend SMTP) so sign-up and sign-in emails come from ontour.vip.
+5. Copy the project URL and anon/publishable key from Project Settings > API.
+
+### 3. Vercel
+1. Import the GitHub repo.
+2. Environment variables (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+   `NEXT_PUBLIC_SITE_URL=https://upgrades.ontour.vip`, `RESEND_API_KEY`, `EMAIL_FROM="OnTour Upgrades <upgrades@ontour.vip>"`, `ADMIN_NOTIFY_EMAIL=eddie@please.co`
+3. Domains: add `upgrades.ontour.vip`. At GoDaddy, add the CNAME record Vercel shows (usually `upgrades` pointing to `cname.vercel-dns.com`).
+
+### 4. Make yourself Super Admin
+Sign up in the app with eddie@please.co, then run `supabase/make-super-admin.sql` in the SQL editor.
+
+### Local development
+```bash
+cp .env.example .env.local   # fill in Supabase values
+npm install
+npm run dev
+```
+Without `RESEND_API_KEY`, app emails print to the terminal, and invite links also show on the Team page.
+
+## Testing Phase 1
+
+Use four email addresses (Gmail `+` aliases work, like `you+owner@gmail.com`).
+
+1. **Artist:** sign up as the owner, create an artist, add a tour and two shows, publish one.
+2. **Team:** invite a rep and an accountant, and accept each invite in a private window.
+   - The rep can edit tours and shows but has no Verification, Team, Settings, or Financials.
+   - The accountant sees only Overview and Financials.
+3. **Verification:** as owner, submit with each proof type across a few test artists. For the manager option, open the confirm link from the email (or server log).
+4. **Admin:** as Eddie, open P&T admin, request changes on one (the owner sees your note and can resubmit), approve another, change a fee, suspend and reinstate.
+5. **Storefront:** `/{handle}` returns not found until approved, then lists published upcoming shows. Suspending takes it offline.
+6. **Isolation:** signed in on a different artist, paste another artist's `/a/...` URL. You should get "Page not found."
+
+## Data model
+
+- `profiles`: one per login, with the super-admin flag
+- `artists`: status, verification code, fee in basis points, managed-lead flag
+- `artist_members`: links users to artists with role owner, rep, or accountant
+- `invitations`, `verification_submissions` (proof plus reviewer checklist and decision), `tours`, `shows`, `audit_log`
+
+Status changes, fees, invites, team changes, and verification all go through database functions that check permissions and write to the audit log.
