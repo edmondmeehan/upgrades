@@ -73,8 +73,11 @@ async function sendConfirmation(holdId: string) {
   if (!v?.order?.fans?.email) return;
   const date = new Date(`${v.show.show_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
   const city = `${v.show.city ?? ""}${v.show.region ? `, ${v.show.region}` : ""}`;
+  const db = createAdminClient();
+  const { data: sup } = db ? await db.from("artists").select("support_email").eq("handle", v.artist.handle).single<{ support_email: string | null }>() : { data: null };
   await sendEmail({
     to: v.order.fans.email,
+    replyTo: sup?.support_email ?? undefined,
     subject: `You're going VIP: ${v.artist.name} in ${v.show.city} (${v.order.confirmation_code})`,
     eyebrow: "Order confirmed",
     title: `You're going VIP, ${v.order.fans.name?.split(" ")[0] ?? "friend"}`,
@@ -90,6 +93,6 @@ async function sendConfirmation(holdId: string) {
     ],
     images: v.passes.map((p, i) => ({ src: `${siteUrl()}/qr/${p.code}.png`, alt: `QR code for pass ${p.code}`, caption: v.passes.length > 1 ? `${p.code}  (guest ${i + 1})` : p.code })),
     button: { label: "View your passes", url: `${siteUrl()}/order/${holdId}` },
-    footnote: "Lost this email? Find your order any time at upgrades.ontour.vip/find-order with your confirmation number and last name. Show the QR code at VIP check-in. You can also save each pass as an image from your order page. Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.",
+    footnote: `Questions about your order? Contact the ${v.artist.name} team at ${siteUrl()}/${v.artist.handle}/support or just reply to this email. Lost this email? Find your order any time at upgrades.ontour.vip/find-order with your confirmation number and last name. Show the QR code at VIP check-in. You can also save each pass as an image from your order page. Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.`,
   });
 }

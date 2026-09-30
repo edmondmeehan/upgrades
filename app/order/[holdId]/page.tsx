@@ -40,7 +40,7 @@ export default async function Order({ params, searchParams }: P) {
       <header className="bg-navy">
         <div className="home-wrap flex items-center justify-between py-5">
           <Logo href={`/${v.artist.handle}`} label={`${v.artist.name} upgrades`} />
-          <a href="https://help.please.co" className="fan-nav-btn solid"><Icon name="help" size={16} /><span>Fan Support</span></a>
+          <Link href={`/${v.artist.handle}/support${v.order ? `?order=${v.order.confirmation_code}` : ""}`} className="fan-nav-btn solid"><Icon name="help" size={16} /><span>Fan Support</span></Link>
         </div>
       </header>
       <main className="mx-auto grid max-w-[560px] gap-5 px-4 py-8">
@@ -88,7 +88,10 @@ export default async function Order({ params, searchParams }: P) {
               <p className="help">Tip: on iPhone, open the saved pass and add it to your Photos favorites so it&apos;s one tap away at the door. Brighten your screen when you scan.</p>
               <p className="help">This is a VIP upgrade. Your concert ticket is separate.{v.product.includes_photo ? " Your meet & greet photos will be emailed after the show." : ""}</p>
             </div>
-            <Link href={`/${v.artist.handle}`} className="btn btn-ghost justify-self-start">Back to {v.artist.name}</Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/${v.artist.handle}`} className="btn btn-ghost">Back to {v.artist.name}</Link>
+              <Link href={`/${v.artist.handle}/support?order=${v.order.confirmation_code}`} className="btn btn-ghost">Questions? Contact {v.artist.name}</Link>
+            </div>
           </>
         ) : pending ? (
           <div className="card grid justify-items-start gap-3 p-6" role="status">
