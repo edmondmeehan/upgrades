@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireArtist } from "@/lib/auth";
 import { sendEmail, siteUrl } from "@/lib/email";
 import { cleanError, slugify, withMsg } from "@/lib/util";
+import { isValidTimeZone } from "@/lib/timezones";
 import type { MemberRole, ProofMethod } from "@/lib/types";
 import { ROLE_LABEL } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export async function createTour(artistId: string, fd: FormData) {
     .insert({ artist_id: artistId, name, description: opt(fd, "description"), created_by: user.id })
     .select("id").single();
   if (error || !data) done(`/a/${artistId}/tours`, error, "");
-  redirect(withMsg(`/a/${artistId}/tours/${data.id}`, "ok", "Tour created. Add your first show below."));
+  redirect(withMsg(`/a/${artistId}/tours/${data.id}`, "ok", "Tour created. Add your shows below."));
 }
 
 export async function updateTour(artistId: string, tourId: string, fd: FormData) {
@@ -51,44 +52,91 @@ function showFields(fd: FormData) {
     doors_time: opt(fd, "doors_time"),
     show_time: opt(fd, "show_time"),
     timezone: str(fd, "timezone") || "America/New_York",
-    venue_name: str(fd, "venue_name"),
+    venue_name: opt(fd, "venue_name"),
     address: opt(fd, "address"),
-    city: str(fd, "city"),
+    city: opt(fd, "city"),
     region: opt(fd, "region"),
     country: (str(fd, "country") || "US").toUpperCase().slice(0, 2),
     postal_code: opt(fd, "postal_code"),
   };
 }
 
-export async function createShow(artistId: string, tourId: string, fd: FormData) {
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^\d{2}:\d{2}$/;
+const clean = (v: unknown, max = 200) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
+
+async function uniqueSlugs(supabase: Awaited<ReturnType<typeof requireArtist>>["supabase"], artistId: string) {
+  const { data } = await supabase.from("shows").select("slug").eq("artist_id", artistId);
+  const taken = new Set((data ?? []).map((r: { slug: string }) => r.slug));
+  return (date: string, city: string | null) => {
+    const base = `${date}-${slugify(city ?? "") || "tbd"}`;
+    let slug = base;
+    for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+    taken.add(slug);
+    return slug;
+  };
+}
+
+/** Saves the rows from the tour date builder (calendar picks, pasted or uploaded lists) as draft shows. */
+export async function bulkCreateShows(artistId: string, tourId: string, fd: FormData) {
   const { supabase, user } = await requireArtist(artistId, ["owner", "rep"]);
-  const f = showFields(fd);
   const back = `/a/${artistId}/tours/${tourId}`;
-  if (!f.show_date || !f.venue_name || !f.city) redirect(withMsg(back, "err", "Date, venue, and city are required."));
-  const base = `${f.show_date}-${slugify(f.city)}`;
-  let lastError: { message?: string; code?: string } | null = null;
-  for (let n = 1; n <= 5; n++) {
-    const slug = n === 1 ? base : `${base}-${n}`;
-    const { error } = await supabase.from("shows").insert({ ...f, artist_id: artistId, tour_id: tourId, slug, created_by: user.id });
-    if (!error) done(back, null, `Show added: ${f.city}, ${f.show_date}.`);
-    lastError = error;
-    if (error.code !== "23505") break;
+  let input: unknown;
+  try { input = JSON.parse(str(fd, "rows")); } catch { redirect(withMsg(back, "err", "Couldn't read the list. Try again.")); }
+  if (!Array.isArray(input) || input.length === 0) redirect(withMsg(back, "err", "The list is empty."));
+  if (input.length > 250) redirect(withMsg(back, "err", "Add up to 250 shows at a time."));
+
+  const slugFor = await uniqueSlugs(supabase, artistId);
+  const rows = [];
+  for (const raw of input as Record<string, unknown>[]) {
+    const date = String(raw.show_date ?? "");
+    if (!DATE_RE.test(date)) redirect(withMsg(back, "err", "Every show needs a date."));
+    const tz = clean(raw.timezone, 64) ?? "America/New_York";
+    const city = clean(raw.city, 120);
+    rows.push({
+      artist_id: artistId, tour_id: tourId, created_by: user.id, status: "draft",
+      show_date: date, slug: slugFor(date, city), city,
+      region: clean(raw.region, 60), venue_name: clean(raw.venue_name, 160),
+      country: (clean(raw.country, 2) ?? "US").toUpperCase(),
+      doors_time: TIME_RE.test(String(raw.doors_time)) ? String(raw.doors_time) : null,
+      show_time: TIME_RE.test(String(raw.show_time)) ? String(raw.show_time) : null,
+      timezone: isValidTimeZone(tz) ? tz : "America/New_York",
+      address: clean(raw.address), postal_code: clean(raw.postal_code, 20),
+    });
   }
-  done(back, lastError, "");
+  const { error } = await supabase.from("shows").insert(rows);
+  done(back, error, `Saved ${rows.length} show${rows.length === 1 ? "" : "s"} as drafts.`);
+}
+
+export async function publishReadyShows(artistId: string, tourId: string) {
+  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { data, error } = await supabase.from("shows").update({ status: "published" })
+    .eq("tour_id", tourId).eq("artist_id", artistId).eq("status", "draft")
+    .not("city", "is", null).not("venue_name", "is", null).select("id");
+  const n = data?.length ?? 0;
+  done(`/a/${artistId}/tours/${tourId}`, error, n ? `Published ${n} show${n === 1 ? "" : "s"}.` : "No drafts have both a city and venue yet.");
 }
 
 export async function updateShow(artistId: string, showId: string, fd: FormData) {
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
   const f = showFields(fd);
-  if (!f.show_date || !f.venue_name || !f.city) redirect(withMsg(`/a/${artistId}/shows/${showId}`, "err", "Date, venue, and city are required."));
+  const back = `/a/${artistId}/shows/${showId}`;
+  if (!f.show_date) redirect(withMsg(back, "err", "Add the show date."));
+  const { data: cur } = await supabase.from("shows").select("status").eq("id", showId).single<{ status: string }>();
+  if (cur?.status === "published" && (!f.city || !f.venue_name))
+    redirect(withMsg(back, "err", "Published shows need a city and venue. Unpublish it first to clear them."));
   const { error } = await supabase.from("shows").update(f).eq("id", showId).eq("artist_id", artistId);
-  done(`/a/${artistId}/shows/${showId}`, error, "Show saved.");
+  done(back, error, "Show saved.");
 }
 
 export async function setShowStatus(artistId: string, showId: string, fd: FormData) {
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
   const status = str(fd, "status");
   if (!["draft", "published", "cancelled"].includes(status)) redirect(`/a/${artistId}/shows/${showId}`);
+  if (status === "published") {
+    const { data: cur } = await supabase.from("shows").select("city, venue_name").eq("id", showId).single<{ city: string | null; venue_name: string | null }>();
+    if (!cur?.city || !cur?.venue_name) redirect(withMsg(`/a/${artistId}/shows/${showId}`, "err", "Add the city and venue before publishing."));
+  }
   const { error } = await supabase.from("shows")
     .update({ status, cancelled_at: status === "cancelled" ? new Date().toISOString() : null })
     .eq("id", showId).eq("artist_id", artistId);

@@ -36,9 +36,9 @@ export type Show = {
   doors_time: string | null;
   show_time: string | null;
   timezone: string;
-  venue_name: string;
+  venue_name: string | null;
   address: string | null;
-  city: string;
+  city: string | null;
   region: string | null;
   country: string;
   postal_code: string | null;

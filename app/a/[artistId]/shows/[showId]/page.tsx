@@ -24,7 +24,7 @@ export default async function ShowPage({ params, searchParams }: P) {
     <div className="max-w-3xl">
       <p className="mb-2"><Link href={`/a/${artistId}/tours/${show.tour_id}`}>{show.tours.name}</Link></p>
       <div className="mb-6 flex flex-wrap items-baseline gap-3">
-        <h2 className="text-3xl">{show.city}, {formatDate(show.show_date)}</h2>
+        <h2 className="text-3xl">{show.city ?? "City TBD"}, {formatDate(show.show_date)}</h2>
         <ShowStatus status={show.status} />
       </div>
       <Flash ok={ok} err={err} />
@@ -33,6 +33,7 @@ export default async function ShowPage({ params, searchParams }: P) {
         {show.status === "draft" && (
           <>
             <p>Drafts are only visible to your team. Publish when the date is confirmed.</p>
+            {(!show.city || !show.venue_name) && <p className="font-semibold">Add the city and venue below before publishing.</p>}
             {artist.status !== "approved" && <p className="muted">Published shows appear on your storefront once P&amp;T approves your account.</p>}
             <form action={statusAction} className="flex flex-wrap gap-3">
               <SubmitButton name="status" value="published" pendingText="Publishing…">Publish show</SubmitButton>
