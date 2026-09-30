@@ -135,6 +135,12 @@
   .nav a { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 14px; border-radius: 22px; color: var(--color-ink); text-decoration: none; font-weight: 600; font-size: 15px; }
   .nav a:hover { background: var(--color-paper); color: var(--color-ink); text-decoration: none; }
   .nav a[aria-current="page"] { background: var(--color-yellow); }
+  /* Admin sidebar: navy, so it's always clear you're in P&T admin */
+  .admin-side .nav a, .admin-side .nav button { color: #fff; }
+  .admin-side .nav a:hover, .admin-side .nav button:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+  .admin-side .nav a[aria-current="page"] { background: var(--color-yellow); color: var(--color-ink); }
+  .admin-side .text-mute { color: #b7b1cc; }
+  .admin-side .border-line { border-color: rgba(255, 255, 255, 0.15); }
   .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; color: var(--color-mute); }
   .crumbs a { color: var(--color-mute); font-weight: 600; }
   .crumbs a:hover { color: var(--color-ink); }

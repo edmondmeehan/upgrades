@@ -25,39 +25,59 @@ export function artistNav(id: string, role: string): NavItem[] {
   ];
 }
 
+/** Artist-side account links. Admins get one way into the admin area, nothing more. */
 export function globalNav(isAdmin: boolean): NavItem[] {
   return [
     { href: "/dashboard", label: "Your artists", icon: "grid", exact: true },
-    ...(isAdmin ? [
-      { href: "/admin", label: "P&T admin", icon: "shield" as const, exact: true },
-      { href: "/admin/finance", label: "Platform finance", icon: "dollar" as const },
-      { href: "/admin/payments", label: "Stripe", icon: "card" as const },
-      { href: "/admin/team", label: "Admins", icon: "users" as const },
-      { href: "/admin/audit", label: "Audit log", icon: "list" as const },
-    ] : []),
     { href: "/account", label: "Account", icon: "user" },
+    ...(isAdmin ? [{ href: "/admin", label: "P&T admin", icon: "shield" as const }] : []),
   ];
 }
 
-function SideContent({ email, isAdmin, artist, items }: { email: string; isAdmin: boolean; artist?: ShellArtist; items?: NavItem[] }) {
+/** Everything in the admin area. No artist-side links. */
+export function adminNav(): NavItem[] {
+  return [
+    { href: "/admin", label: "Artists", icon: "grid", exact: true },
+    { href: "/admin/finance", label: "Platform finance", icon: "dollar" },
+    { href: "/admin/payments", label: "Stripe", icon: "card" },
+    { href: "/admin/team", label: "Admins", icon: "users" },
+    { href: "/admin/audit", label: "Audit log", icon: "list" },
+  ];
+}
+
+type SideProps = { email: string; isAdmin: boolean; artist?: ShellArtist; items?: NavItem[]; mode?: "app" | "admin" };
+
+function SideContent({ email, isAdmin, artist, items, mode = "app" }: SideProps) {
+  const admin = mode === "admin";
   return (
     <>
-      {artist && (
-        <div className="grid gap-3">
-          <div className="rounded-2xl bg-paper px-3.5 py-3">
-            <p className="eyebrow">{artist.roleLabel}</p>
-            <p className="mt-1 break-words text-[17px] font-extrabold leading-tight">{artist.name}</p>
-            <div className="mt-2"><StatusPill status={artist.status} /></div>
+      {admin ? (
+        <NavLinks items={adminNav()} />
+      ) : (
+        <>
+          {artist && (
+            <div className="grid gap-3">
+              <div className="rounded-2xl bg-paper px-3.5 py-3">
+                <p className="eyebrow">{artist.roleLabel}</p>
+                <p className="mt-1 break-words text-[17px] font-extrabold leading-tight">{artist.name}</p>
+                <div className="mt-2"><StatusPill status={artist.status} /></div>
+              </div>
+              {items && <NavLinks items={items} />}
+            </div>
+          )}
+          <div className="grid gap-2">
+            {artist && <p className="eyebrow px-3.5">Account</p>}
+            <NavLinks items={globalNav(isAdmin)} />
           </div>
-          {items && <NavLinks items={items} />}
-        </div>
+        </>
       )}
-      <div className="grid gap-2">
-        {artist && <p className="eyebrow px-3.5">Account</p>}
-        <NavLinks items={globalNav(isAdmin)} />
-      </div>
       <div className="mt-auto grid gap-1 border-t border-line pt-4">
-        <p className="truncate px-3.5 text-[13px] text-mute" title={email}>{email}</p>
+        {admin && (
+          <div className="nav">
+            <Link href="/dashboard"><Icon name="back" />Artist view</Link>
+          </div>
+        )}
+        <p className="truncate px-3.5 pt-1 text-[13px] text-mute" title={email}>{email}</p>
         <form action={signOut} className="nav">
           <button type="submit" className="flex h-11 w-full items-center gap-3 rounded-[22px] px-3.5 text-left text-[15px] font-semibold hover:bg-paper">
             <Icon name="out" />Sign out
@@ -68,22 +88,25 @@ function SideContent({ email, isAdmin, artist, items }: { email: string; isAdmin
   );
 }
 
-export function Shell(props: { email: string; isAdmin: boolean; artist?: ShellArtist; items?: NavItem[]; banner?: React.ReactNode; children: React.ReactNode }) {
+export function Shell(props: SideProps & { banner?: React.ReactNode; children: React.ReactNode }) {
   const { children, banner, ...side } = props;
+  const admin = side.mode === "admin";
+  const home = admin ? "/admin" : "/dashboard";
+  const label = admin ? "Admin" : "Upgrades";
   return (
     <div className="shell">
-      <aside className="shell-side" aria-label="Main">
+      <aside className={`shell-side ${admin ? "!bg-navy !border-navy onDark" : ""}`} aria-label={admin ? "Admin" : "Main"}>
         <div className="flex items-center gap-2.5">
-          <Logo href="/dashboard" size={34} chip />
-          <span className="text-[15px] font-extrabold">Upgrades</span>
+          <Logo href={home} size={34} chip={!admin} label={admin ? "P&T admin home" : "OnTour Upgrades home"} />
+          <span className={`text-[15px] font-extrabold ${admin ? "text-yellow" : ""}`}>{label}</span>
         </div>
-        <SideContent {...side} />
+        <div className={`contents ${admin ? "admin-side" : ""}`}><SideContent {...side} /></div>
       </aside>
       <div className="shell-main">
         <header className="shell-top onDark">
           <div className="flex items-center gap-2.5">
-            <Logo href="/dashboard" size={30} />
-            <span className="text-[15px] font-extrabold text-white">Upgrades</span>
+            <Logo href={home} size={30} label={admin ? "P&T admin home" : "OnTour Upgrades home"} />
+            <span className={`text-[15px] font-extrabold ${admin ? "text-yellow" : "text-white"}`}>{label}</span>
           </div>
           <details className="mobile-menu">
             <summary className="inline-flex h-11 w-11 items-center justify-center rounded-full text-white" aria-label="Menu"><Icon name="menu" size={22} /></summary>
