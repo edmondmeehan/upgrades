@@ -9,6 +9,7 @@ import { ShowStatus } from "@/components/ShowStatus";
 import { updateShow, setShowStatus, deleteShow } from "../../actions";
 import { formatDate } from "@/lib/util";
 import type { Show } from "@/lib/types";
+import { dollars } from "@/lib/packages";
 
 type P = { params: Promise<{ artistId: string; showId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
 
@@ -20,6 +21,9 @@ export default async function ShowPage({ params, searchParams }: P) {
     .maybeSingle<Show & { tours: { name: string } }>();
   if (!show) notFound();
   const statusAction = setShowStatus.bind(null, artistId, showId);
+  const { data: pkgs } = await supabase.from("show_products").select("id, price_cents, capacity, active, products!inner(id, name, archived_at, is_sample)")
+    .eq("show_id", showId).eq("products.is_sample", false).is("products.archived_at", null)
+    .returns<{ id: string; price_cents: number; capacity: number; active: boolean; products: { id: string; name: string } }[]>();
 
   return (
     <div className="grid max-w-3xl gap-6">
@@ -62,7 +66,26 @@ export default async function ShowPage({ params, searchParams }: P) {
         <div><SubmitButton variant="dark">Save show</SubmitButton></div>
       </form>
 
-      <p className="help">Upgrades, check-in details, scanning, and photos for this show arrive in the next phases.</p>
+      <section className="panel grid gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2>VIP packages at this show</h2>
+          <Link href={`/a/${artistId}/packages?tour=${show.tour_id}`} className="btn btn-ghost btn-sm">Add a package</Link>
+        </div>
+        {(pkgs ?? []).length === 0 ? <p className="muted">None yet.</p> : (
+          <ul className="grid gap-2">
+            {pkgs!.map((sp) => (
+              <li key={sp.id}>
+                <Link href={`/a/${artistId}/packages/${sp.products.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3 !no-underline text-ink">
+                  <span className="font-bold">{sp.products.name}{!sp.active && <span className="badge b-neutral ml-2">Paused</span>}</span>
+                  <span className="text-[14px] text-mute">{dollars(sp.price_cents)}, {sp.capacity} available</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <p className="help">Check-in details, scanning, and photos for this show arrive in the next phases.</p>
 
       {show.status === "draft" && (
         <form action={deleteShow.bind(null, artistId, showId, show.tour_id)}>

@@ -14,10 +14,14 @@ export function artistNav(id: string, role: string): NavItem[] {
   const owner = role === "owner" || role === "admin";
   return [
     { href: base, label: "Overview", icon: "home", exact: true },
-    ...(canEdit ? [{ href: `${base}/tours`, label: "Tours & shows", icon: "calendar" as const }] : []),
+    ...(canEdit ? [
+      { href: `${base}/tours`, label: "Tours & shows", icon: "calendar" as const },
+      { href: `${base}/packages`, label: "VIP packages", icon: "star" as const },
+    ] : []),
     ...(role !== "rep" ? [{ href: `${base}/financials`, label: "Financials", icon: "dollar" as const }] : []),
     ...(role !== "rep" ? [{ href: `${base}/payments`, label: "Payments", icon: "card" as const }] : []),
     ...(owner ? [
+      { href: `${base}/storefront`, label: "Storefront", icon: "palette" as const },
       { href: `${base}/verification`, label: "Verification", icon: "badge" as const },
       { href: `${base}/team`, label: "Team", icon: "users" as const },
       { href: `${base}/settings`, label: "Settings", icon: "settings" as const },

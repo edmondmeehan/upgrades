@@ -223,7 +223,7 @@ export async function removeMember(artistId: string, userId: string) {
 export async function updateArtist(artistId: string, fd: FormData) {
   const { supabase } = await requireArtist(artistId, ["owner"]);
   const { error } = await supabase.from("artists")
-    .update({ name: str(fd, "name"), website: opt(fd, "website"), bio: opt(fd, "bio") })
+    .update({ name: str(fd, "name"), website: opt(fd, "website") })
     .eq("id", artistId);
   done(`/a/${artistId}/settings`, error, "Settings saved.");
 }

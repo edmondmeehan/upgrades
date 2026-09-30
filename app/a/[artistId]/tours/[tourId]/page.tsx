@@ -9,6 +9,7 @@ import { ShowBuilder } from "@/components/ShowBuilder";
 import { bulkCreateShows, publishReadyShows, updateTour, deleteTour } from "../../actions";
 import { formatDate, formatTime } from "@/lib/util";
 import type { Show, Tour } from "@/lib/types";
+import { dollars } from "@/lib/packages";
 
 type P = { params: Promise<{ artistId: string; tourId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
 
@@ -20,6 +21,19 @@ export default async function TourPage({ params, searchParams }: P) {
   if (!tour) notFound();
   const { data } = await supabase.from("shows").select("*").eq("tour_id", tourId).order("show_date").returns<Show[]>();
   const shows = data ?? [];
+  const { data: tourPkgs } = shows.length
+    ? await supabase.from("show_products").select("show_id, price_cents, active, products!inner(id, name, archived_at, is_sample)")
+        .in("show_id", shows.map((s) => s.id)).eq("active", true)
+        .returns<{ show_id: string; price_cents: number; active: boolean; products: { id: string; name: string; archived_at: string | null; is_sample: boolean } }[]>()
+    : { data: [] };
+  const pkgs = new Map<string, { id: string; name: string; shows: number; min: number; max: number }>();
+  (tourPkgs ?? []).filter((r) => !r.products.archived_at && !r.products.is_sample).forEach((r) => {
+    const cur = pkgs.get(r.products.id) ?? { id: r.products.id, name: r.products.name, shows: 0, min: Infinity, max: 0 };
+    cur.shows++; cur.min = Math.min(cur.min, r.price_cents); cur.max = Math.max(cur.max, r.price_cents);
+    pkgs.set(r.products.id, cur);
+  });
+  const pkgCount = new Map<string, number>();
+  (tourPkgs ?? []).filter((r) => !r.products.archived_at && !r.products.is_sample).forEach((r) => pkgCount.set(r.show_id, (pkgCount.get(r.show_id) ?? 0) + 1));
 
   const published = shows.filter((s) => s.status === "published").length;
   const needsDetails = shows.filter((s) => s.status === "draft" && (!s.city || !s.venue_name)).length;
@@ -53,7 +67,7 @@ export default async function TourPage({ params, searchParams }: P) {
           <section className="card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="list min-w-[40rem]">
-                <thead><tr><th className="!pt-4">Date</th><th className="!pt-4">City</th><th className="!pt-4">Venue</th><th className="!pt-4">Times</th><th className="!pt-4">Status</th></tr></thead>
+                <thead><tr><th className="!pt-4">Date</th><th className="!pt-4">City</th><th className="!pt-4">Venue</th><th className="!pt-4">Times</th><th className="!pt-4">Packages</th><th className="!pt-4">Status</th></tr></thead>
                 <tbody>
                   {shows.map((s) => {
                     const href = `/a/${artistId}/shows/${s.id}`;
@@ -64,6 +78,7 @@ export default async function TourPage({ params, searchParams }: P) {
                         <td className={s.city ? "font-semibold" : "text-mute"}>{s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD"}</td>
                         <td className={s.venue_name ? "" : "text-mute"}>{s.venue_name ?? "Venue TBD"}</td>
                         <td className="muted whitespace-nowrap text-[13px]">{times || "Not set"}</td>
+                        <td className="text-[13px]">{pkgCount.get(s.id) ? <span className="font-semibold">{pkgCount.get(s.id)}</span> : <span className="text-mute">None</span>}</td>
                         <td><ShowStatus status={s.status} incomplete={!s.city || !s.venue_name} /></td>
                       </tr>
                     );
@@ -73,6 +88,30 @@ export default async function TourPage({ params, searchParams }: P) {
             </div>
           </section>
         </>
+      )}
+
+      {shows.length > 0 && (
+        <section className="panel grid gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2>VIP packages on this tour</h2>
+              <p className="muted mt-1">{pkgs.size ? "What fans can buy at these shows." : "Next step: add the upgrades fans can buy at these shows."}</p>
+            </div>
+            <Link href={`/a/${artistId}/packages?tour=${tourId}`} className="btn">{pkgs.size ? "Add a package" : "Add a VIP package"}</Link>
+          </div>
+          {pkgs.size > 0 && (
+            <ul className="grid gap-2">
+              {[...pkgs.values()].map((p) => (
+                <li key={p.id}>
+                  <Link href={`/a/${artistId}/packages/${p.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3 !no-underline text-ink hover:bg-[#efedf5]">
+                    <span className="font-bold">{p.name}</span>
+                    <span className="text-[14px] text-mute">{p.min === p.max ? dollars(p.min) : `${dollars(p.min)} to ${dollars(p.max)}`}, {p.shows} of {shows.length} shows</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       <ShowBuilder key={shows.length} action={bulkCreateShows.bind(null, artistId, tourId)} existingDates={shows.map((s) => s.show_date)} />
