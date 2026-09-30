@@ -44,12 +44,13 @@ export default async function Payments({ params, searchParams }: P) {
           to see payments, payouts, and disputes.
         </p>
 
-        {state === "restricted" && row?.requirements_due?.length ? (
-          <div className="alert alert-red flex-col gap-1">
-            <span className="font-extrabold">Stripe needs a few more details</span>
+        {state === "in_progress" && row?.requirements_due?.length ? (
+          <div className="alert alert-yellow flex-col gap-1">
+            <span className="font-extrabold">Stripe still needs</span>
             <ul className="list-disc pl-5 font-medium">{row.requirements_due.slice(0, 8).map((r) => <li key={r}>{requirementLabel(r)}</li>)}</ul>
           </div>
         ) : null}
+        {state === "reviewing" && <div className="alert alert-gray">You&apos;ve given Stripe everything it asked for. Stripe is checking your details, which usually takes a few minutes and sometimes a day or two.</div>}
         {state === "ready" && <div className="alert alert-green">Your Stripe account is ready. Payouts go to the bank account you added in Stripe.</div>}
 
         {canAct && live && (

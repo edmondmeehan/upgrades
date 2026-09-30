@@ -1,7 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
-import { getStripe, onboardingLink, saveAccount, type ArtistStripe } from "@/lib/stripe";
+import { ACCOUNT_INCLUDE, getStripe, onboardingLink, retrieveAccount, saveAccount, type ArtistStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { siteUrl } from "@/lib/email";
 import { withMsg } from "@/lib/util";
@@ -24,18 +24,6 @@ function fail(back: string, e: unknown): never {
   redirect(withMsg(back, "err", msg));
 }
 
-/**
- * Connected-account settings, per Stripe's recommendation for direct charges:
- * the artist is the seller, Stripe bills them its fees, Stripe (not P&T) covers negative balances,
- * Stripe collects onboarding requirements, and the artist uses the full Stripe Dashboard.
- */
-const CONTROLLER = {
-  fees: { payer: "account" },
-  losses: { payments: "stripe" },
-  requirement_collection: "stripe",
-  stripe_dashboard: { type: "full" },
-} as const;
-
 /** Creates the artist's connected account if needed, then sends them to Stripe's onboarding. */
 export async function startPayoutSetup(artistId: string, fd: FormData) {
   const { back, stripe, row, artist, profile } = await context(artistId);
@@ -45,19 +33,23 @@ export async function startPayoutSetup(artistId: string, fd: FormData) {
   let url: string;
   try {
     if (!accountId) {
-      const account = await stripe.accounts.create({
-        controller: CONTROLLER,
-        country,
-        email: profile.email,
-        capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-        business_profile: {
-          name: artist.name,
-          url: artist.website ? (artist.website.startsWith("http") ? artist.website : `https://${artist.website}`) : undefined,
-          mcc: "7929", // bands, orchestras and entertainers
-          product_description: "VIP concert upgrades sold to fans through OnTour Upgrades",
+      // Accounts v2, set up the way Stripe recommends for direct charges: the artist is the seller,
+      // Stripe collects its fees from the artist, Stripe (not P&T) covers negative balances,
+      // and the artist gets the full Stripe Dashboard.
+      const site = artist.website ? (artist.website.startsWith("http") ? artist.website : `https://${artist.website}`) : undefined;
+      const account = await stripe.v2.core.accounts.create({
+        display_name: artist.name,
+        contact_email: profile.email,
+        identity: { country: country.toLowerCase() },
+        dashboard: "full",
+        defaults: {
+          responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
+          profile: { business_url: site, doing_business_as: artist.name, product_description: "VIP concert upgrades sold to fans through OnTour Upgrades" },
         },
+        configuration: { merchant: { mcc: "7929", capabilities: { card_payments: { requested: true } } } }, // 7929: bands, orchestras, entertainers
         metadata: { artist_id: artistId, handle: artist.handle },
-      }, { idempotencyKey: `ontour-account-${artistId}-${country}` }); // a double-click can't create two accounts
+        include: [...ACCOUNT_INCLUDE],
+      }, { idempotencyKey: `ontour-v2-account-${artistId}-${country}` }); // a double-click can't create two accounts
       await saveAccount(artistId, account);
       accountId = account.id;
     }
@@ -69,7 +61,7 @@ export async function startPayoutSetup(artistId: string, fd: FormData) {
 export async function refreshStripe(artistId: string) {
   const { back, stripe, row } = await context(artistId);
   if (!row?.stripe_account_id) redirect(back);
-  try { await saveAccount(artistId, await stripe.accounts.retrieve(row.stripe_account_id)); } catch (e) { fail(back, e); }
+  try { await saveAccount(artistId, await retrieveAccount(row.stripe_account_id)); } catch (e) { fail(back, e); }
   redirect(withMsg(back, "ok", "Status updated from Stripe."));
 }
 

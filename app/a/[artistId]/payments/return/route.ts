@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireArtist } from "@/lib/auth";
-import { getStripe, onboardingLink, saveAccount, type ArtistStripe } from "@/lib/stripe";
+import { getStripe, onboardingLink, retrieveAccount, saveAccount, type ArtistStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Stripe sends the artist back here after onboarding (or when the onboarding link expired).
@@ -19,9 +19,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
     }
     if (data?.stripe_account_id) {
       try {
-        const a = await stripe.accounts.retrieve(data.stripe_account_id);
+        const a = await retrieveAccount(data.stripe_account_id);
         await saveAccount(artistId, a);
-        dest.searchParams.set("ok", a.charges_enabled && a.payouts_enabled ? "You're set up to get paid." : "Saved. Stripe still needs a few details from you.");
+        dest.searchParams.set("ok", a.configuration?.merchant?.capabilities?.card_payments?.status === "active" ? "You're set up to get paid." : "Saved. Stripe still needs a few details from you.");
       } catch (e) { console.error("[stripe] return", e); }
     }
   }

@@ -33,7 +33,7 @@ export default async function StripeAdmin() {
     } catch (e) { platformError = e instanceof Error ? e.message : "Couldn't reach Stripe"; }
   }
   const serviceKey = !!createAdminClient();
-  const hooks = !!process.env.STRIPE_WEBHOOK_SECRET, connectHooks = !!process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  const hooks = !!process.env.STRIPE_WEBHOOK_SECRET, connectHooks = !!(process.env.STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET || process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
 
   const { data } = await supabase.from("artists").select("id, name, handle, status, artist_stripe(*)").order("name").returns<Row[]>();
   const rows = (data ?? []).map((r) => ({ ...r, s: Array.isArray(r.artist_stripe) ? r.artist_stripe[0] ?? null : r.artist_stripe }));
@@ -55,8 +55,8 @@ export default async function StripeAdmin() {
             detail={serviceKey ? "Artists' Stripe records can be saved." : <>Add <code>SUPABASE_SERVICE_ROLE_KEY</code> in Vercel (Supabase, then Project Settings, then API keys).</>} />
           <Check ok={hooks} label="Webhook for your account"
             detail={hooks ? "Receiving card-on-file events." : <>In Stripe, add an endpoint at <code>{siteUrl()}/api/stripe/webhook</code> listening to events on your account, with <code>checkout.session.completed</code>. Put its signing secret in <code>STRIPE_WEBHOOK_SECRET</code>.</>} />
-          <Check ok={connectHooks} label="Webhook for connected accounts"
-            detail={connectHooks ? "Receiving artist account updates." : <>Add a second endpoint at the same URL listening to events on connected accounts, with <code>account.updated</code>. Put its signing secret in <code>STRIPE_CONNECT_WEBHOOK_SECRET</code>.</>} />
+          <Check ok={connectHooks} label="Webhook for artist account updates"
+            detail={connectHooks ? "Receiving Accounts v2 updates." : <>Add a second destination at the same URL: events from your account, payload style <strong>Thin</strong>, with <code>v2.core.account.updated</code>, <code>v2.core.account[requirements].updated</code> and <code>v2.core.account[configuration.merchant].capability_status_updated</code>. Put its signing secret in <code>STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET</code>.</>} />
         </ul>
         <p className="help mt-3">Turn on Connect for the platform account (Stripe, then Connect, then Get started) and fill in the platform profile and branding. Artists get their own full Stripe Dashboard, pay Stripe&apos;s fees from their account, and Stripe covers negative balances, so P&amp;T isn&apos;t liable for artists&apos; refunds or chargebacks.</p>
       </section>
@@ -64,7 +64,7 @@ export default async function StripeAdmin() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="stat"><b>{rows.length}</b><span>Artists</span></div>
         <div className="stat"><b>{ready}</b><span>Ready to get paid</span></div>
-        <div className="stat"><b>{rows.filter((r) => ["in_progress", "restricted"].includes(stripeState(r.s))).length}</b><span>In progress</span></div>
+        <div className="stat"><b>{rows.filter((r) => ["in_progress", "reviewing"].includes(stripeState(r.s))).length}</b><span>In progress</span></div>
         <div className="stat"><b>{rows.filter((r) => r.s?.card_last4).length}</b><span>Card on file</span></div>
       </div>
 

@@ -26,36 +26,51 @@ export type ArtistStripe = {
   card_exp: string | null; livemode: boolean; updated_at: string;
 };
 
-export type StripeState = "not_started" | "in_progress" | "restricted" | "ready";
+export type StripeState = "not_started" | "in_progress" | "reviewing" | "ready";
 
 export function stripeState(s: Partial<ArtistStripe> | null | undefined): StripeState {
   if (!s?.stripe_account_id) return "not_started";
   if (s.charges_enabled && s.payouts_enabled) return "ready";
-  if (s.details_submitted) return "restricted";
+  if (s.details_submitted) return "reviewing";
   return "in_progress";
 }
 
 export const STRIPE_STATE_LABEL: Record<StripeState, [string, string]> = {
   not_started: ["Not started", "b-neutral"],
   in_progress: ["Setup in progress", "b-pending"],
-  restricted: ["Needs attention", "b-rejected"],
+  reviewing: ["Stripe is reviewing", "b-pending"],
   ready: ["Ready to get paid", "b-approved"],
 };
 
-/** Copies a Connect account's status from Stripe into our database. */
-export async function saveAccount(artistId: string, a: Stripe.Account) {
+export type V2Account = Stripe.V2.Core.Account;
+
+/** What we ask Stripe to include when reading an artist's Accounts v2 object. */
+export const ACCOUNT_INCLUDE = ["configuration.merchant", "requirements", "identity", "defaults"] as const;
+
+export async function retrieveAccount(accountId: string) {
+  const stripe = getStripe();
+  if (!stripe) throw new Error("Stripe isn't configured");
+  return stripe.v2.core.accounts.retrieve(accountId, { include: [...ACCOUNT_INCLUDE] });
+}
+
+/** Copies an artist's Accounts v2 status from Stripe into our database. */
+export async function saveAccount(artistId: string, a: V2Account) {
   const db = createAdminClient();
   if (!db) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  const caps = a.configuration?.merchant?.capabilities;
+  const cardStatus = caps?.card_payments?.status;
+  const payoutStatus = caps?.stripe_balance?.payouts?.status;
+  const due = (a.requirements?.entries ?? []).filter((e) => e.awaiting_action_from === "user");
   const { error } = await db.from("artist_stripe").upsert({
     artist_id: artistId,
     stripe_account_id: a.id,
-    country: a.country ?? null,
-    charges_enabled: !!a.charges_enabled,
-    payouts_enabled: !!a.payouts_enabled,
-    details_submitted: !!a.details_submitted,
-    requirements_due: a.requirements?.currently_due ?? [],
-    disabled_reason: a.requirements?.disabled_reason ?? null,
-    livemode: stripeMode() === "live",
+    country: a.identity?.country?.toUpperCase() ?? null,
+    charges_enabled: cardStatus === "active",
+    payouts_enabled: payoutStatus === "active",
+    details_submitted: due.length === 0, // nothing left for the artist to provide
+    requirements_due: due.map((e) => e.description).filter(Boolean),
+    disabled_reason: cardStatus === "restricted" || payoutStatus === "restricted" ? "restricted" : null,
+    livemode: a.livemode,
     updated_at: new Date().toISOString(),
   }, { onConflict: "artist_id" });
   if (error) throw error;
@@ -76,26 +91,26 @@ export async function saveCard(artistId: string, customerId: string, pm: Stripe.
   if (error) throw error;
 }
 
-/** Friendly names for Stripe's requirement codes. */
-export function requirementLabel(code: string) {
-  const c = code.replace(/^.*\./, "").replace(/_/g, " ");
-  if (code.includes("external_account")) return "Bank account for payouts";
-  if (code.includes("tos_acceptance")) return "Accept Stripe's terms";
-  if (code.includes("verification.document")) return "ID document";
-  if (code.includes("ssn_last_4") || code.includes("id_number")) return "Tax ID or SSN";
-  if (code.includes("business_profile")) return `Business details (${c})`;
-  return c.charAt(0).toUpperCase() + c.slice(1);
+/** Stripe's requirement descriptions are already readable; tidy them for display. */
+export function requirementLabel(text: string) {
+  const t = text.replace(/_/g, " ").trim();
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 /** A fresh Stripe onboarding link for an artist's connected account. Server-only helper, not an action. */
 export async function onboardingLink(artistId: string, accountId: string) {
   const stripe = getStripe();
   if (!stripe) throw new Error("Stripe isn't configured");
-  const link = await stripe.accountLinks.create({
+  const link = await stripe.v2.core.accountLinks.create({
     account: accountId,
-    type: "account_onboarding",
-    refresh_url: `${siteUrl()}/a/${artistId}/payments/return?refresh=1`,
-    return_url: `${siteUrl()}/a/${artistId}/payments/return`,
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        configurations: ["merchant"],
+        refresh_url: `${siteUrl()}/a/${artistId}/payments/return?refresh=1`,
+        return_url: `${siteUrl()}/a/${artistId}/payments/return`,
+      },
+    },
   });
   return link.url;
 }
