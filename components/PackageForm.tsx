@@ -32,6 +32,7 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
   const [defPrice, setDefPrice] = useState(initial.default_price);
   const [defCap, setDefCap] = useState(initial.default_capacity);
   const [onSale, setOnSale] = useState(toLocal(initial.on_sale_at));
+  const [timing, setTiming] = useState<"now" | "scheduled">(initial.on_sale_at && new Date(initial.on_sale_at) > new Date() ? "scheduled" : "now");
   const [offSale, setOffSale] = useState(toLocal(initial.off_sale_at));
   const [showPast, setShowPast] = useState(false);
 
@@ -51,7 +52,7 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
     <form action={action} className="grid gap-6">
       <input type="hidden" name="kind" value={initial.kind} />
       <input type="hidden" name="shows" value={JSON.stringify(selected.map((s) => ({ show_id: s.id, price: s.price || null, capacity: s.capacity || null })))} />
-      <input type="hidden" name="on_sale_at" value={onSale ? new Date(onSale).toISOString() : ""} />
+      <input type="hidden" name="on_sale_at" value={timing === "scheduled" && onSale ? new Date(onSale).toISOString() : ""} />
       <input type="hidden" name="off_sale_at" value={offSale ? new Date(offSale).toISOString() : ""} />
 
       <section className="panel grid gap-5">
@@ -140,10 +141,23 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
       </section>
 
       <section className="panel grid gap-5">
-        <h2>When it&apos;s on sale</h2>
+        <h2>When it goes on sale</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {([["now", "Go on sale now", "Fans can buy as soon as you save (once the show is published and you're approved)."],
+             ["scheduled", "Schedule an on-sale time", "Your storefront shows a live countdown until it opens."]] as const).map(([v, label, hint]) => (
+            <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${timing === v ? "border-violet shadow-[0_0_0_3px_#dcd5fa]" : "border-line"}`}>
+              <input type="radio" name="timing" className="check mt-0.5" checked={timing === v} onChange={() => setTiming(v)} />
+              <span><span className="font-semibold">{label}</span><span className="help block">{hint}</span></span>
+            </label>
+          ))}
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="field"><span>On sale from</span><input className="input" type="datetime-local" value={onSale} onChange={(e) => setOnSale(e.target.value)} /><small>Leave blank to go on sale as soon as the show is published.</small></label>
-          <label className="field"><span>Off sale at</span><input className="input" type="datetime-local" value={offSale} onChange={(e) => setOffSale(e.target.value)} /><small>Leave blank to sell until the day of the show.</small></label>
+          {timing === "scheduled" && (
+            <label className="field"><span>On-sale date and time</span>
+              <input className="input" type="datetime-local" required value={onSale} min={toLocal(new Date().toISOString())} onChange={(e) => setOnSale(e.target.value)} />
+              <small>Your local time ({Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, " ")}).</small></label>
+          )}
+          <label className="field"><span>Off sale at (optional)</span><input className="input" type="datetime-local" value={offSale} onChange={(e) => setOffSale(e.target.value)} /><small>Leave blank to sell until the day of the show.</small></label>
         </div>
         <label className="field"><span>Presale code (optional)</span><input className="input max-w-xs uppercase" name="presale_code" defaultValue={initial.presale_code ?? ""} placeholder="FANCLUB" maxLength={30} /><small>Fans need this code to buy. Share it with your fan club or mailing list.</small></label>
       </section>

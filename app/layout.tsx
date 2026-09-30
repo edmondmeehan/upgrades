@@ -3,6 +3,7 @@ import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://upgrades.ontour.vip"),
   title: { default: "OnTour Upgrades", template: "%s · OnTour Upgrades" },
   description: "Sell VIP upgrades to your fans. By Please & Thank You.",
 };

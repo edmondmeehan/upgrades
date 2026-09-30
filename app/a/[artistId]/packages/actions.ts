@@ -93,3 +93,11 @@ export async function archivePackage(artistId: string, productId: string, archiv
   if (error) redirect(withMsg(`/a/${artistId}/packages/${productId}`, "err", cleanError(error)));
   redirect(withMsg(`/a/${artistId}/packages`, "ok", archive ? "Package archived. It's off sale everywhere." : "Package restored."));
 }
+
+/** Skips a scheduled on-sale time: the package goes on sale at every show right away. */
+export async function putOnSaleNow(artistId: string, productId: string) {
+  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { error } = await supabase.from("show_products").update({ on_sale_at: null }).eq("product_id", productId).eq("artist_id", artistId);
+  revalidatePath(`/a/${artistId}/packages`);
+  redirect(withMsg(`/a/${artistId}/packages/${productId}`, error ? "err" : "ok", error ? cleanError(error) : "It's on sale now."));
+}

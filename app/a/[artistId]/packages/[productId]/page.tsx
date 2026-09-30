@@ -5,7 +5,10 @@ import { Flash } from "@/components/Flash";
 import { PackageForm } from "@/components/PackageForm";
 import { SubmitButton } from "@/components/SubmitButton";
 import type { Product, ShowProduct } from "@/lib/packages";
-import { savePackage, archivePackage } from "../actions";
+import { savePackage, archivePackage, putOnSaleNow } from "../actions";
+import { Countdown } from "@/components/Countdown";
+import { ShareButtons } from "@/components/ShareButtons";
+import { siteUrl } from "@/lib/email";
 import { loadFormShows } from "../data";
 
 export const metadata = { title: "VIP package" };
@@ -20,6 +23,8 @@ export default async function EditPackage({ params, searchParams }: P) {
   const { data: first } = await supabase.from("show_products").select("*").eq("product_id", productId).limit(1).maybeSingle<ShowProduct>();
   const shows = await loadFormShows(supabase, artistId, { productId });
   const onSale = shows.filter((s) => s.selected).length;
+  const scheduled = first?.on_sale_at && new Date(first.on_sale_at) > new Date() ? first.on_sale_at : null;
+  const live = artist.status === "approved" && onSale > 0 && !p.archived_at;
 
   return (
     <div className="grid max-w-4xl gap-6">
@@ -28,6 +33,24 @@ export default async function EditPackage({ params, searchParams }: P) {
         {artist.status === "approved" ? "Changes show on your storefront right away." : "Fans can see this once P&T approves your account."}
       </PageHead>
       <Flash ok={ok} err={err} />
+      {scheduled && !p.archived_at && (
+        <section className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] bg-navy p-5 text-white">
+          <div className="grid gap-2">
+            <p className="eyebrow !text-[#b7b1cc]">Goes on sale in</p>
+            <div className="w-[280px]"><Countdown to={scheduled} onDark /></div>
+          </div>
+          <form action={putOnSaleNow.bind(null, artistId, productId)}>
+            <SubmitButton variant="yellow" pendingText="Opening…" confirm="Put this package on sale at every show right now?">Put on sale now</SubmitButton>
+          </form>
+        </section>
+      )}
+      {live && (
+        <section className="panel grid gap-3">
+          <h2>Share it</h2>
+          <p className="muted">Post your storefront link so fans can find this package. Each show also has its own link on your storefront.</p>
+          <ShareButtons url={`${siteUrl()}/${artist.handle}`} title={`${artist.name} VIP upgrades`} text={`${p.name} is available for ${artist.name} shows`} />
+        </section>
+      )}
       <PackageForm action={savePackage.bind(null, artistId, productId)} artistId={artistId} shows={shows} submitLabel="Save changes"
         initial={{ kind: p.kind, name: p.name, description: p.description ?? "", included: p.included ?? [], includes_photo: p.includes_photo, image_url: p.image_url,
           on_sale_at: first?.on_sale_at ?? null, off_sale_at: first?.off_sale_at ?? null, presale_code: first?.presale_code ?? null,

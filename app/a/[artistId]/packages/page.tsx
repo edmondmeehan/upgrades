@@ -28,6 +28,7 @@ export default async function Packages({ params, searchParams }: P) {
           {live.map((p) => {
             const at = (sps ?? []).filter((sp) => sp.product_id === p.id && sp.active);
             const prices = at.map((sp) => sp.price_cents);
+            const starts = at.map((sp) => sp.on_sale_at).filter((d): d is string => !!d && new Date(d) > new Date()).sort()[0];
             const range = prices.length === 0 ? "Not on sale yet" : Math.min(...prices) === Math.max(...prices) ? dollars(prices[0]) : `${dollars(Math.min(...prices))} to ${dollars(Math.max(...prices))}`;
             return (
               <li key={p.id}>
@@ -40,6 +41,9 @@ export default async function Packages({ params, searchParams }: P) {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="badge b-neutral">{KIND_LABEL[p.kind] ?? "Custom"}</span>
                       {p.includes_photo && <span className="badge b-lilac">Includes photo</span>}
+                      {at.length > 0 && (starts
+                        ? <span className="badge b-pending">On sale {new Date(starts).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                        : <span className="badge b-published">On sale</span>)}
                     </div>
                     <span className="text-[18px] font-extrabold leading-tight">{p.name}</span>
                     <span className="muted text-[14px] font-medium">{range}{at.length ? `, ${at.length} show${at.length === 1 ? "" : "s"}` : ""}</span>
