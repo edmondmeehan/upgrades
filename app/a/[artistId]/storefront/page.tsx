@@ -9,13 +9,13 @@ import { siteUrl } from "@/lib/email";
 
 export const metadata = { title: "Storefront" };
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
-type Design = { brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null; tagline: string | null; bio: string | null };
+type Design = { brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null; tagline: string | null; bio: string | null; genres: string[] };
 
 export default async function Storefront({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err } = await searchParams;
   const { supabase, artist } = await requireArtist(artistId, ["owner"]);
-  const { data: d } = await supabase.from("artists").select("brand_color, accent_color, header_image_url, avatar_url, tagline, bio").eq("id", artistId).single<Design>();
+  const { data: d } = await supabase.from("artists").select("brand_color, accent_color, header_image_url, avatar_url, tagline, bio, genres").eq("id", artistId).single<Design>();
   return (
     <>
       <PageHead title="Storefront" aside={artist.status === "approved" ? <Link href={`/${artist.handle}`} target="_blank" className="btn btn-ghost">View live page</Link> : undefined}>

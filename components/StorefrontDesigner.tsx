@@ -3,17 +3,20 @@ import { useState } from "react";
 import { ImageUpload } from "./ImageUpload";
 import { SubmitButton } from "./SubmitButton";
 import { DEFAULT_ACCENT, DEFAULT_BRAND, PALETTES, contrast, isHex, safeAccent, textOn } from "@/lib/color";
+import { GENRES } from "@/lib/genres";
 
 type Props = {
   action: (fd: FormData) => void | Promise<void>;
   artistId: string; name: string; handle: string;
-  initial: { brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null; tagline: string | null; bio: string | null };
+  initial: { brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null; tagline: string | null; bio: string | null; genres?: string[] };
 };
 
 export function StorefrontDesigner({ action, artistId, name, handle, initial }: Props) {
   const [brand, setBrand] = useState(initial.brand_color ?? DEFAULT_BRAND);
   const [accent, setAccent] = useState(initial.accent_color ?? DEFAULT_ACCENT);
   const [tagline, setTagline] = useState(initial.tagline ?? "");
+  const [genres, setGenres] = useState<string[]>(initial.genres ?? []);
+  const toggleGenre = (g: string) => setGenres((cur) => cur.includes(g) ? cur.filter((x) => x !== g) : cur.length >= 3 ? cur : [...cur, g]);
   const b = isHex(brand) ? brand : DEFAULT_BRAND, a = isHex(accent) ? accent : DEFAULT_ACCENT;
   const fg = textOn(b), acc = safeAccent(b, a), accFg = textOn(acc);
   const lowContrast = contrast(b, a) < 3;
@@ -60,6 +63,18 @@ export function StorefrontDesigner({ action, artistId, name, handle, initial }: 
         <section className="panel grid gap-5">
           <h2>Words</h2>
           <label className="field"><span>Tagline</span><input className="input" name="tagline" maxLength={140} value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="VIP upgrades for the Fall 2026 tour" /><small>One line under your name.</small></label>
+          <div className="field">
+            <span>Genres (up to 3)</span>
+            <input type="hidden" name="genres" value={genres.join(",")} />
+            <div className="flex flex-wrap gap-2">
+              {GENRES.map((g) => {
+                const on = genres.includes(g);
+                return <button key={g} type="button" aria-pressed={on} onClick={() => toggleGenre(g)} disabled={!on && genres.length >= 3}
+                  className={`rounded-full px-3.5 py-1.5 text-[13px] font-bold ${on ? "bg-violet text-white" : "bg-paper text-ink hover:bg-[#ebe8f4] disabled:opacity-40"}`}>{g}</button>;
+              })}
+            </div>
+            <small>Fans browse the OnTour home page by genre.</small>
+          </div>
           <label className="field"><span>About</span><textarea className="input" name="bio" maxLength={600} defaultValue={initial.bio ?? ""} placeholder="A few sentences fans see above your shows." /></label>
         </section>
 

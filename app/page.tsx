@@ -1,47 +1,47 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { headers } from "next/headers";
 import { Logo } from "@/components/Logo";
 import { Icon } from "@/components/Icon";
+import { Discover, type DiscoverData } from "@/components/Discover";
+import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth";
 
-export default async function Home() {
-  const { user } = await getSession();
-  if (user) redirect("/dashboard");
+export const dynamic = "force-dynamic";
+export const metadata = {
+  title: "VIP upgrades for live shows",
+  description: "Meet & greets, soundchecks, early entry and more, sold by the artists themselves. See what's on tonight near you.",
+};
+
+export default async function Home({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
+  const { deleted } = await searchParams;
+  const h = await headers();
+  // Vercel adds the visitor's approximate location from their IP address.
+  const region = h.get("x-vercel-ip-country-region")?.toUpperCase() ?? null;
+  const country = h.get("x-vercel-ip-country")?.toUpperCase() ?? null;
+  const cityRaw = h.get("x-vercel-ip-city");
+  const city = cityRaw ? decodeURIComponent(cityRaw) : null;
+  const supabase = await createClient();
+  const [{ data }, { user }] = await Promise.all([supabase.rpc("get_discover"), getSession()]);
+
   return (
     <div className="min-h-screen bg-white">
       <section className="home-top onDark">
         <div className="home-wrap">
           <div className="home-top-bar">
             <Logo />
-            <nav className="fan-nav" aria-label="Account">
-              <Link href="/login" className="fan-nav-btn">Sign in</Link>
-              <a href="https://help.please.co" className="fan-nav-btn solid"><Icon name="help" size={16} /><span>Support</span></a>
+            <nav className="fan-nav" aria-label="Main">
+              <Link href="/find-order" className="fan-nav-btn">Find my order</Link>
+              <Link href="/for-artists" className="fan-nav-btn">For artists</Link>
+              <Link href={user ? "/dashboard" : "/login"} className="fan-nav-btn solid">{user ? "Dashboard" : "Sign in"}</Link>
             </nav>
           </div>
-          <h1 className="home-title">VIP upgrades, run by you</h1>
-          <p className="home-sub">
-            Build your tour, set your own prices, check fans in from your phone, and send their meet &amp; greet photos after.
-            Built by Please &amp; Thank You, who have run VIP on tour for more than 20 years.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/signup" className="btn btn-yellow btn-lg">Create an artist account</Link>
-            <Link href="/login" className="btn btn-lg !bg-transparent !shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.45)] hover:!shadow-[inset_0_0_0_1.5px_#f2d64b]">Sign in</Link>
-          </div>
+          <h1 className="home-title">Go VIP at your next show</h1>
+          <p className="home-sub">Meet &amp; greets, soundchecks, early entry and more, straight from the artists.</p>
         </div>
       </section>
-      <main className="home-wrap py-10">
-        <ul className="grid gap-4 md:grid-cols-3">
-          {[
-            ["You set the price", "Fans see one service fee added on top. Nothing comes out of your price."],
-            ["You own your fans", "Every buyer lands on your fan list, and you can export it any time."],
-            ["Verified artists only", "P&T confirms every artist before a storefront goes live, so fans know it's real."],
-          ].map(([t, d]) => (
-            <li key={t} className="card p-6">
-              <h2 className="text-[18px]">{t}</h2>
-              <p className="muted mt-2">{d}</p>
-            </li>
-          ))}
-        </ul>
+      <main className="home-wrap py-8">
+        {deleted && <p className="alert alert-green mb-6">Your account has been deleted.</p>}
+        <Discover data={(data ?? { shows: [], artists: [] }) as DiscoverData} geo={{ region: country === "US" ? region : null, city }} />
       </main>
     </div>
   );
