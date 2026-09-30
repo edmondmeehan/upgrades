@@ -48,6 +48,12 @@ export default async function Order({ params, searchParams }: P) {
           <>
             <div className="card grid gap-4 p-6">
               <span className="badge b-published justify-self-start">Order confirmed</span>
+              {v.photos && v.product.includes_photo && (
+                <a href={v.photos.url} className="flex items-center justify-between gap-3 rounded-2xl bg-navy px-5 py-4 !no-underline text-white">
+                  <span><span className="block text-[17px] font-extrabold text-yellow">Your photos are ready</span><span className="text-[14px] text-[#d9d5e6]">View and save them to your phone</span></span>
+                  <span className="btn btn-yellow btn-sm">View photos</span>
+                </a>
+              )}
               <h1 className="text-[28px]">You&apos;re going VIP{v.order.fans?.name ? `, ${v.order.fans.name.split(" ")[0]}` : ""}</h1>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-edge px-4 py-3">
                 <span className="th">Confirmation number</span>

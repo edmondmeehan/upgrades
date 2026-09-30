@@ -11,6 +11,7 @@ export type OrderView = {
   product: { name: string; includes_photo: boolean; included: string[] };
   order: { id: string; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
   passes: { code: string }[];
+  photos: { url: string } | null; // gallery link, once the artist has sent photos
 };
 
 /** Everything the order page and confirmation email need, read with the service role (the hold id is the secret). */
@@ -32,7 +33,12 @@ export async function loadOrder(holdId: string): Promise<OrderView | null> {
     const { data: ps } = await db.from("passes").select("code").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
     passes = ps ?? [];
   }
-  return { hold, artist: artist!, show: show!, product: (sp as unknown as { products: OrderView["product"] }).products, order, passes };
+  let photos: OrderView["photos"] = null;
+  if (order) {
+    const { data: g } = await db.from("photo_galleries").select("token, first_sent_at").eq("show_id", hold.show_id).maybeSingle();
+    if (g?.first_sent_at) photos = { url: `/photos/${g.token}?o=${order.confirmation_code}` };
+  }
+  return { hold, artist: artist!, show: show!, product: (sp as unknown as { products: OrderView["product"] }).products, order, passes, photos };
 }
 
 /**
