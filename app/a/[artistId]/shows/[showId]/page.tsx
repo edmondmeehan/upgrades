@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
+import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ShowFields } from "@/components/ShowFields";
@@ -21,15 +22,15 @@ export default async function ShowPage({ params, searchParams }: P) {
   const statusAction = setShowStatus.bind(null, artistId, showId);
 
   return (
-    <div className="max-w-3xl">
-      <p className="mb-2"><Link href={`/a/${artistId}/tours/${show.tour_id}`}>{show.tours.name}</Link></p>
-      <div className="mb-6 flex flex-wrap items-baseline gap-3">
-        <h2 className="text-3xl">{show.city ?? "City TBD"}, {formatDate(show.show_date)}</h2>
-        <ShowStatus status={show.status} />
-      </div>
+    <div className="grid max-w-3xl gap-6">
+      <PageHead crumbs={[{ href: `/a/${artistId}/tours`, label: "Tours & shows" }, { href: `/a/${artistId}/tours/${show.tour_id}`, label: show.tours.name }]}
+        title={`${show.city ?? "City TBD"}, ${formatDate(show.show_date, { month: "short", day: "numeric", year: "numeric" })}`}
+        aside={<ShowStatus status={show.status} incomplete={!show.city || !show.venue_name} />}>
+        {show.venue_name ?? "Venue TBD"}
+      </PageHead>
       <Flash ok={ok} err={err} />
 
-      <section className="panel mb-6 grid gap-3">
+      <section className="panel grid gap-3">
         {show.status === "draft" && (
           <>
             <p>Drafts are only visible to your team. Publish when the date is confirmed.</p>
@@ -56,15 +57,15 @@ export default async function ShowPage({ params, searchParams }: P) {
       </section>
 
       <form action={updateShow.bind(null, artistId, showId)} className="panel grid gap-4">
-        <h3>Show details</h3>
+        <h2>Show details</h2>
         <ShowFields show={show} />
         <div><SubmitButton variant="dark">Save show</SubmitButton></div>
       </form>
 
-      <p className="muted mt-6 text-sm">Upgrades, check-in details, scanning, and photos for this show arrive in the next phases.</p>
+      <p className="help">Upgrades, check-in details, scanning, and photos for this show arrive in the next phases.</p>
 
       {show.status === "draft" && (
-        <form action={deleteShow.bind(null, artistId, showId, show.tour_id)} className="mt-6">
+        <form action={deleteShow.bind(null, artistId, showId, show.tour_id)}>
           <SubmitButton variant="danger" confirm="Delete this draft show?">Delete show</SubmitButton>
         </form>
       )}

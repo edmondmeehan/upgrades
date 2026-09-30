@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
 import { Flash } from "@/components/Flash";
+import { PageHead } from "@/components/Shell";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createTour } from "../actions";
 import { formatDate } from "@/lib/util";
@@ -15,43 +16,52 @@ export default async function Tours({ params, searchParams }: P) {
   const { data } = await supabase.from("tours").select("id, name, status, shows(show_date, status)")
     .eq("artist_id", artistId).order("created_at", { ascending: false }).returns<TourRow[]>();
   const tours = data ?? [];
+  const fmt = (d: string) => formatDate(d, { month: "short", day: "numeric", year: "numeric" });
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
-      <div>
-        <Flash ok={ok} err={err} />
-        <h2 className="mb-4">Tours</h2>
-        {tours.length === 0 ? (
-          <p className="muted">No tours yet. Create one to start adding show dates.</p>
-        ) : (
-          <ul className="grid gap-3">
-            {tours.map((t) => {
-              const dates = t.shows.map((s) => s.show_date).sort();
-              const live = t.shows.filter((s) => s.status === "published").length;
-              return (
-                <li key={t.id}>
-                  <Link href={`/a/${artistId}/tours/${t.id}`} className="panel block !no-underline text-stage hover:border-stage">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-display text-xl font-semibold">{t.name}</span>
-                      {t.status === "archived" && <span className="pill text-mute">Archived</span>}
-                    </div>
-                    <p className="muted mt-1">
-                      {t.shows.length === 0 ? "No shows yet"
-                        : `${t.shows.length} show${t.shows.length === 1 ? "" : "s"}, ${live} published. ${formatDate(dates[0], { month: "short", day: "numeric", year: "numeric" })} to ${formatDate(dates[dates.length - 1], { month: "short", day: "numeric", year: "numeric" })}`}
-                    </p>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+    <>
+      <PageHead title="Tours & shows" />
+      <Flash ok={ok} err={err} />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div>
+          {tours.length === 0 ? (
+            <div className="card grid justify-items-center gap-2 px-4 py-12 text-center">
+              <h2 className="text-[16px]">No tours yet</h2>
+              <p className="help">Create one to start adding show dates.</p>
+            </div>
+          ) : (
+            <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">
+              {tours.map((t) => {
+                const dates = t.shows.map((s) => s.show_date).sort();
+                const live = t.shows.filter((s) => s.status === "published").length;
+                return (
+                  <li key={t.id}>
+                    <Link href={`/a/${artistId}/tours/${t.id}`} className="card grid h-full gap-3 p-5 !no-underline text-ink transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(19,0,86,.12)]">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[17px] font-extrabold leading-tight">{t.name}</span>
+                        {t.status === "archived" && <span className="badge b-archived">Archived</span>}
+                      </div>
+                      <span className="muted text-[13px] font-medium">
+                        {t.shows.length === 0 ? "No shows yet" : `${fmt(dates[0])} to ${fmt(dates[dates.length - 1])}`}
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="stat"><b>{t.shows.length}</b><span>Shows</span></div>
+                        <div className="stat"><b>{live}</b><span>Published</span></div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+        <form action={createTour.bind(null, artistId)} className="panel grid gap-4">
+          <h2>New tour</h2>
+          <label className="field"><span>Tour name</span><input className="input" name="name" required placeholder="Fall 2026 headline run" /></label>
+          <label className="field"><span>Notes for your team</span><textarea className="input" name="description" /><small>Only your team sees this.</small></label>
+          <div><SubmitButton>Create tour</SubmitButton></div>
+        </form>
       </div>
-      <form action={createTour.bind(null, artistId)} className="panel grid content-start gap-4">
-        <h3>New tour</h3>
-        <label className="field"><span>Tour name</span><input className="input" name="name" required placeholder="Fall 2026 headline run" /></label>
-        <label className="field"><span>Notes for your team</span><textarea className="input" name="description" /><small>Only your team sees this.</small></label>
-        <div><SubmitButton>Create tour</SubmitButton></div>
-      </form>
-    </div>
+    </>
   );
 }

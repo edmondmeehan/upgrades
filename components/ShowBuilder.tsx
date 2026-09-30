@@ -48,16 +48,17 @@ export function ShowBuilder({ action, existingDates }: Props) {
   return (
     <section className="panel grid gap-6" aria-labelledby="add-shows">
       <div>
-        <h3 id="add-shows" className="text-2xl">Add shows</h3>
+        <h2 id="add-shows">Add shows</h2>
         <p className="muted mt-1">Get dates into the list below, check them, then save. Shows save as drafts, so city and venue can be filled in later.</p>
       </div>
 
-      <div role="tablist" aria-label="How to add shows" className="flex flex-wrap gap-2">
-        {([["calendar", "Pick dates on a calendar"], ["paste", "Paste or upload a list"]] as const).map(([k, label]) => (
-          <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => { setMode(k); setNotice(null); }}
-            className={`btn ${mode === k ? "btn-dark" : "btn-ghost"}`}>{label}</button>
-        ))}
-        <button type="button" className="btn btn-ghost" onClick={() => addRows([blankShow(newRowDefaults())])}>Add one show</button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="tablist" aria-label="How to add shows" className="pill-nav">
+          {([["calendar", "Pick dates on a calendar"], ["paste", "Paste or upload a list"]] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => { setMode(k); setNotice(null); }}>{label}</button>
+          ))}
+        </div>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => addRows([blankShow(newRowDefaults())])}>Add one show</button>
       </div>
 
       {mode === "calendar"
@@ -66,34 +67,34 @@ export function ShowBuilder({ action, existingDates }: Props) {
         : <PasteImport defaults={newRowDefaults()}
             onAdd={(r, msg) => { addRows(r); setNotice(msg); }} />}
 
-      {notice && <p role="status" className="rounded-lg bg-yellow px-3 py-2 font-semibold">{notice}</p>}
+      {notice && <p role="status" className="alert alert-yellow">{notice}</p>}
 
       {rows.length > 0 && (
         <div className="grid gap-4">
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border-[1.5px] border-line bg-paper p-3">
-            <p className="w-full font-semibold">Same for every show</p>
+          <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-paper p-4">
+            <p className="w-full text-[14px] font-extrabold">Same for every show</p>
             <label className="field"><span className="!font-normal text-sm">Doors</span>
-              <input className="input !min-h-10 w-32" type="time" value={defaults.doors_time} onChange={(e) => setDefaults({ ...defaults, doors_time: e.target.value })} /></label>
+              <input className="input input-sm w-36" type="time" value={defaults.doors_time} onChange={(e) => setDefaults({ ...defaults, doors_time: e.target.value })} /></label>
             <label className="field"><span className="!font-normal text-sm">Show time</span>
-              <input className="input !min-h-10 w-32" type="time" value={defaults.show_time} onChange={(e) => setDefaults({ ...defaults, show_time: e.target.value })} /></label>
-            <button type="button" className="btn btn-ghost !min-h-10"
+              <input className="input input-sm w-36" type="time" value={defaults.show_time} onChange={(e) => setDefaults({ ...defaults, show_time: e.target.value })} /></label>
+            <button type="button" className="btn btn-ghost btn-sm"
               onClick={() => setRows((prev) => prev.map((r) => ({ ...r, doors_time: defaults.doors_time || r.doors_time, show_time: defaults.show_time || r.show_time })))}>
               Apply times to all {rows.length}
             </button>
-            <p className="muted w-full text-sm">Time zones fill in from the state. Anything you leave blank can be edited on each show later.</p>
+            <p className="help w-full">Time zones fill in from the state. Anything you leave blank can be edited on each show later.</p>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border-[1.5px] border-line">
-            <table className="w-full min-w-[60rem] text-left text-[0.95rem]">
-              <thead className="bg-paper text-sm text-mute">
+          <div className="overflow-x-auto rounded-2xl border border-line">
+            <table className="w-full min-w-[60rem] text-left text-[14px]">
+              <thead className="th bg-paper">
                 <tr>
-                  <th className="px-2 py-2 font-semibold">Date</th><th className="px-2 py-2 font-semibold">City</th>
-                  <th className="px-2 py-2 font-semibold">State</th><th className="px-2 py-2 font-semibold">Venue</th>
-                  <th className="px-2 py-2 font-semibold">Doors</th><th className="px-2 py-2 font-semibold">Show</th>
-                  <th className="px-2 py-2 font-semibold">Time zone</th><th className="px-2 py-2"><span className="sr-only">Remove</span></th>
+                  <th className="px-2 py-2.5">Date</th><th className="px-2 py-2.5">City</th>
+                  <th className="px-2 py-2.5">State</th><th className="px-2 py-2.5">Venue</th>
+                  <th className="px-2 py-2.5">Doors</th><th className="px-2 py-2.5">Show</th>
+                  <th className="px-2 py-2.5">Time zone</th><th className="px-2 py-2"><span className="sr-only">Remove</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y-[1.5px] divide-line bg-card">
+              <tbody className="divide-y divide-line bg-card">
                 {rows.map((r) => {
                   const dup = r.show_date && existing.has(r.show_date);
                   const twice = r.show_date && !dup && rows.filter((x) => x.show_date === r.show_date).length > 1;
@@ -101,23 +102,23 @@ export function ShowBuilder({ action, existingDates }: Props) {
                   return (
                     <tr key={r.key} className="align-top">
                       <td className="px-2 py-2">
-                        <input aria-label="Date" type="date" className={`input !min-h-10 w-40 ${!r.show_date ? "!border-rope" : ""}`} value={r.show_date}
+                        <input aria-label="Date" type="date" className={`input input-sm w-40 ${!r.show_date ? "!border-[#c8391a]" : ""}`} value={r.show_date}
                           onChange={(e) => update(r.key, { show_date: e.target.value, raw_date: undefined })} />
-                        {!r.show_date && <p className="mt-1 text-sm text-rope">{r.raw_date ? `Couldn't read "${r.raw_date}"` : "Pick a date"}</p>}
-                        {dup && <p className="mt-1 text-sm text-[#8a6d00]">Already a show that day</p>}
-                        {twice && <p className="mt-1 text-sm text-[#8a6d00]">Listed twice</p>}
+                        {!r.show_date && <p className="mt-1 text-[13px] font-semibold text-rope">{r.raw_date ? `Couldn't read "${r.raw_date}"` : "Pick a date"}</p>}
+                        {dup && <p className="mt-1 text-[13px] font-semibold text-warn">Already a show that day</p>}
+                        {twice && <p className="mt-1 text-[13px] font-semibold text-warn">Listed twice</p>}
                       </td>
-                      <td className="px-2 py-2"><input aria-label="City" className="input !min-h-10 min-w-36" value={r.city} placeholder="TBD" onChange={(e) => update(r.key, { city: e.target.value })} /></td>
-                      <td className="px-2 py-2"><input aria-label="State or region" className="input !min-h-10 w-20" value={r.region} onChange={(e) => updateRegion(r.key, e.target.value)} /></td>
-                      <td className="px-2 py-2"><input aria-label="Venue" className="input !min-h-10 min-w-44" value={r.venue_name} placeholder="TBD" onChange={(e) => update(r.key, { venue_name: e.target.value })} /></td>
-                      <td className="px-2 py-2"><input aria-label="Doors" type="time" className="input !min-h-10 w-32" value={r.doors_time} onChange={(e) => update(r.key, { doors_time: e.target.value })} /></td>
-                      <td className="px-2 py-2"><input aria-label="Show time" type="time" className="input !min-h-10 w-32" value={r.show_time} onChange={(e) => update(r.key, { show_time: e.target.value })} /></td>
+                      <td className="px-2 py-2"><input aria-label="City" className="input input-sm min-w-36" value={r.city} placeholder="TBD" onChange={(e) => update(r.key, { city: e.target.value })} /></td>
+                      <td className="px-2 py-2"><input aria-label="State or region" className="input input-sm w-20" value={r.region} onChange={(e) => updateRegion(r.key, e.target.value)} /></td>
+                      <td className="px-2 py-2"><input aria-label="Venue" className="input input-sm min-w-44" value={r.venue_name} placeholder="TBD" onChange={(e) => update(r.key, { venue_name: e.target.value })} /></td>
+                      <td className="px-2 py-2"><input aria-label="Doors" type="time" className="input input-sm w-32" value={r.doors_time} onChange={(e) => update(r.key, { doors_time: e.target.value })} /></td>
+                      <td className="px-2 py-2"><input aria-label="Show time" type="time" className="input input-sm w-32" value={r.show_time} onChange={(e) => update(r.key, { show_time: e.target.value })} /></td>
                       <td className="px-2 py-2">
-                        <select aria-label="Time zone" className="input !min-h-10 w-44" value={r.timezone} onChange={(e) => update(r.key, { timezone: e.target.value, tzAuto: false })}>
+                        <select aria-label="Time zone" className="input input-sm w-44" value={r.timezone} onChange={(e) => update(r.key, { timezone: e.target.value, tzAuto: false })}>
                           {tzOptions.map((z) => <option key={z} value={z}>{tzLabel(z)}</option>)}
                         </select>
                       </td>
-                      <td className="px-2 py-2"><button type="button" className="btn btn-ghost !min-h-10 !px-3" onClick={() => remove(r.key)} aria-label={`Remove ${r.show_date || "row"}`}>Remove</button></td>
+                      <td className="px-2 py-2"><button type="button" className="btn btn-text btn-sm" onClick={() => remove(r.key)} aria-label={`Remove ${r.show_date || "row"}`}>Remove</button></td>
                     </tr>
                   );
                 })}
@@ -184,9 +185,9 @@ function CalendarPicker({ existing, inList, onAdd }: { existing: Set<string>; in
       {!validRange ? <p className="text-rope">The last date needs to be after the first date.</p> : (
         <>
           <div className="flex flex-wrap items-center gap-2 text-[0.95rem]">
-            <span className="muted">Pick every</span>
-            {WEEKDAYS.map((w, i) => <button key={w} type="button" className="pill !py-1 text-stage hover:bg-paper" onClick={() => pickWeekday(i)}>{w}</button>)}
-            {count > 0 && <button type="button" className="ml-2 text-blue hover:underline" onClick={() => setPicked(new Set())}>Clear picks</button>}
+            <span className="help">Pick every</span>
+            {WEEKDAYS.map((w, i) => <button key={w} type="button" className="btn btn-ghost btn-sm !h-8 !px-3" onClick={() => pickWeekday(i)}>{w}</button>)}
+            {count > 0 && <button type="button" className="btn btn-text btn-sm" onClick={() => setPicked(new Set())}>Clear picks</button>}
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -196,8 +197,8 @@ function CalendarPicker({ existing, inList, onAdd }: { existing: Set<string>; in
               const lead = first.getUTCDay();
               return (
                 <div key={`${y}-${m}`}>
-                  <p className="mb-2 font-display text-lg font-semibold">{first.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}</p>
-                  <div className="grid grid-cols-7 gap-1 text-center text-xs text-mute" aria-hidden>{WEEKDAYS.map((w) => <span key={w}>{w[0]}</span>)}</div>
+                  <p className="mb-2 text-[15px] font-extrabold">{first.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" })}</p>
+                  <div className="th grid grid-cols-7 gap-1 text-center !text-[11px]" aria-hidden>{WEEKDAYS.map((w) => <span key={w}>{w[0]}</span>)}</div>
                   <div className="mt-1 grid grid-cols-7 gap-1">
                     {Array.from({ length: lead }).map((_, i) => <span key={`b${i}`} />)}
                     {Array.from({ length: days }).map((_, i) => {
@@ -209,12 +210,12 @@ function CalendarPicker({ existing, inList, onAdd }: { existing: Set<string>; in
                         <button key={d} type="button" disabled={out || taken} aria-pressed={on}
                           aria-label={`${prettyDate(d)}${taken ? ", already added" : ""}`}
                           onClick={() => toggle(d)}
-                          className={`relative aspect-square rounded-lg border-[1.5px] text-sm font-semibold transition-colors
-                            ${on ? "border-stage bg-yellow text-stage" : "border-line bg-card hover:border-stage"}
-                            ${out ? "!border-transparent !bg-transparent text-line cursor-default" : ""}
-                            ${taken && !out ? "!border-dashed !bg-paper text-mute cursor-not-allowed" : ""}`}>
+                          className={`relative aspect-square rounded-[10px] text-[14px] font-semibold transition-colors
+                            ${on ? "bg-yellow text-ink shadow-[inset_0_0_0_1.5px_#e8c92f]" : "bg-white shadow-[inset_0_0_0_1.5px_#e7e5ee] hover:shadow-[inset_0_0_0_1.5px_#260797]"}
+                            ${out ? "!bg-transparent !shadow-none text-edge cursor-default" : ""}
+                            ${taken && !out ? "!bg-paper !shadow-none text-mute cursor-not-allowed" : ""}`}>
                           {i + 1}
-                          {taken && !out && <span aria-hidden className="absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-stage" />}
+                          {taken && !out && <span aria-hidden className="absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-violet" />}
                         </button>
                       );
                     })}
@@ -223,15 +224,15 @@ function CalendarPicker({ existing, inList, onAdd }: { existing: Set<string>; in
               );
             })}
           </div>
-          {months.length >= 13 && <p className="muted text-sm">Showing the first 13 months. Shorten the range to see the rest.</p>}
+          {months.length >= 13 && <p className="help">Showing the first 13 months. Shorten the range to see the rest.</p>}
 
-          <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded-xl border-2 border-stage bg-card px-4 py-3 shadow-[3px_3px_0_#1b1b1b]">
+          <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3 shadow-[0_12px_32px_rgba(19,0,86,.14)]">
             <p className="flex-1 font-semibold">
               {Number.isFinite(goal) && goal > 0 ? `${count} of ${goal} picked` : `${count} picked`}
-              {Number.isFinite(goal) && goal > 0 && count > goal && <span className="text-[#8a6d00]"> ({count - goal} over)</span>}
+              {Number.isFinite(goal) && goal > 0 && count > goal && <span className="text-warn"> ({count - goal} over)</span>}
             </p>
-            <p className="muted hidden text-sm sm:block">Dotted days are already on this tour or in the list.</p>
-            <button type="button" className="btn btn-primary" disabled={count === 0}
+            <p className="help hidden sm:block">Dotted days are already on this tour or in the list.</p>
+            <button type="button" className="btn" disabled={count === 0}
               onClick={() => { onAdd([...picked].sort()); setPicked(new Set()); }}>
               Add {count || ""} to the list
             </button>
@@ -271,7 +272,7 @@ function PasteImport({ defaults, onAdd }: { defaults: Partial<DraftShow>; onAdd:
     <div className="grid gap-4">
       <label className="field">
         <span>Paste rows from a spreadsheet, routing sheet, or email</span>
-        <textarea className="input !min-h-40 font-mono text-sm" value={text} onChange={(e) => setText(e.target.value)}
+        <textarea className="input !min-h-40 font-mono !text-[14px]" value={text} onChange={(e) => setText(e.target.value)}
           placeholder={"Date\tCity\tState\tVenue\n10/3/2026\tNashville\tTN\tRyman Auditorium\nOct 4\tAtlanta, GA\tThe Tabernacle"} />
         <small>
           Columns with headings like Date, City, State, Venue, Doors, and Show are matched automatically. Without headings,
@@ -280,12 +281,12 @@ function PasteImport({ defaults, onAdd }: { defaults: Partial<DraftShow>; onAdd:
       </label>
       {err && <p role="alert" className="font-semibold text-rope">{err}</p>}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className="btn btn-primary" onClick={() => read(text)}>Read these rows</button>
+        <button type="button" className="btn" onClick={() => read(text)}>Read these rows</button>
         <label className="btn btn-ghost cursor-pointer">
           Upload a CSV
           <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" className="sr-only" onChange={(e) => onFile(e.target.files?.[0])} />
         </label>
-        <a className="text-[0.95rem]" download="tour-dates-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`}>Download a template</a>
+        <a className="text-[14px]" download="tour-dates-template.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE)}`}>Download a template</a>
       </div>
     </div>
   );

@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { Wordmark } from "@/components/Wordmark";
+import { Logo } from "@/components/Logo";
 
 export default function NotFound() {
   return (
-    <main className="mx-auto grid min-h-dvh max-w-md content-center gap-6 px-5">
-      <Wordmark />
-      <h1>Page not found</h1>
-      <p>This page doesn&apos;t exist, or you don&apos;t have access to it.</p>
-      <Link href="/dashboard" className="btn btn-primary w-fit">Go to your artists</Link>
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div className="grid max-w-[420px] justify-items-start gap-4">
+        <Logo size={40} chip />
+        <h1>We can&apos;t find that page.</h1>
+        <p className="help text-[15px]">The link may be incomplete, or you may not have access to it.</p>
+        <Link href="/dashboard" className="btn">Go to your artists</Link>
+      </div>
     </main>
   );
 }

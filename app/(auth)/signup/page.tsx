@@ -9,10 +9,9 @@ export const metadata = { title: "Create account" };
 export default async function Signup({ searchParams }: { searchParams: Promise<{ next?: string; ok?: string; err?: string }> }) {
   const { next = "/onboarding", ok, err } = await searchParams;
   return (
-    <AuthShell title="Create your account">
-      <p className="mb-6 muted">For artists and their teams. If someone invited you, use the email the invite went to.</p>
+    <AuthShell title="Create your account" subtitle="If someone invited you, use the email the invite went to.">
       <Flash ok={ok} err={err} />
-      <form className="grid gap-4" action={signUp}>
+      <form className="grid gap-5" action={signUp}>
         <input type="hidden" name="next" value={next} />
         <label className="field"><span>Your name</span><input className="input" name="name" autoComplete="name" required /></label>
         <label className="field">
@@ -21,16 +20,16 @@ export default async function Signup({ searchParams }: { searchParams: Promise<{
           <small>An email on your artist&apos;s own website domain speeds up verification.</small>
         </label>
         <label className="field"><span>Password</span><input className="input" name="password" type="password" minLength={8} autoComplete="new-password" required /></label>
-        <label className="flex items-start gap-3 text-[0.95rem]">
-          <input type="checkbox" name="terms" className="mt-1 size-5 accent-stage" required />
+        <label className="flex items-start gap-3 text-[14px] leading-snug">
+          <input type="checkbox" name="terms" className="check mt-0.5" required />
           <span>
             I accept the artist terms, including that card processing fees aren&apos;t returned when an upgrade is refunded,
             those fees are my cost, and the card on file may be charged for any shortfall.
           </span>
         </label>
-        <div><SubmitButton pendingText="Creating account…">Create account</SubmitButton></div>
+        <SubmitButton size="lg" block pendingText="Creating account…">Create account</SubmitButton>
       </form>
-      <p className="mt-8 muted">Already have an account? <Link href={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link></p>
+      <p className="help text-center">Already have an account? <Link href={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link></p>
     </AuthShell>
   );
 }

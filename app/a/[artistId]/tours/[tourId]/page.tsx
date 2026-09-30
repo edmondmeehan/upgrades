@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
+import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { ShowStatus } from "@/components/ShowStatus";
@@ -26,59 +27,58 @@ export default async function TourPage({ params, searchParams }: P) {
   const first = shows[0]?.show_date, last = shows[shows.length - 1]?.show_date;
 
   return (
-    <div className="grid gap-8">
-      <div>
-        <p className="mb-2"><Link href={`/a/${artistId}/tours`}>All tours</Link></p>
-        <div className="flex flex-wrap items-baseline gap-3">
-          <h2 className="text-3xl">{tour.name}</h2>
-          {tour.status === "archived" && <span className="pill text-mute">Archived</span>}
-        </div>
-        <p className="muted mt-1">
-          {shows.length === 0 ? "No shows yet."
-            : `${shows.length} show${shows.length === 1 ? "" : "s"}, ${published} published. ${formatDate(first!, { month: "short", day: "numeric", year: "numeric" })} to ${formatDate(last!, { month: "short", day: "numeric", year: "numeric" })}.`}
-        </p>
-      </div>
+    <div className="grid gap-6">
+      <PageHead crumbs={[{ href: `/a/${artistId}/tours`, label: "Tours & shows" }]} title={tour.name}
+        aside={<>
+          {tour.status === "archived" && <span className="badge b-archived">Archived</span>}
+          {ready > 0 && (
+            <form action={publishReadyShows.bind(null, artistId, tourId)}>
+              <SubmitButton variant="dark" pendingText="Publishing…">Publish {ready} ready draft{ready === 1 ? "" : "s"}</SubmitButton>
+            </form>
+          )}
+        </>}>
+        {shows.length === 0 ? "No shows yet."
+          : `${formatDate(first!, { month: "short", day: "numeric", year: "numeric" })} to ${formatDate(last!, { month: "short", day: "numeric", year: "numeric" })}`}
+      </PageHead>
       <Flash ok={ok} err={err} />
 
       {shows.length > 0 && (
-        <section className="grid gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h3>Shows</h3>
-            {ready > 0 && (
-              <form action={publishReadyShows.bind(null, artistId, tourId)}>
-                <SubmitButton variant="dark" pendingText="Publishing…">Publish {ready} ready draft{ready === 1 ? "" : "s"}</SubmitButton>
-              </form>
-            )}
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="stat"><b>{shows.length}</b><span>Shows</span></div>
+            <div className="stat"><b>{published}</b><span>Published</span></div>
+            <div className="stat"><b>{ready}</b><span>Ready to publish</span></div>
+            <div className="stat"><b>{needsDetails}</b><span>Need city or venue</span></div>
           </div>
-          {needsDetails > 0 && <p className="muted">{needsDetails} draft{needsDetails === 1 ? " needs" : "s need"} a city and venue before {needsDetails === 1 ? "it" : "they"} can be published.</p>}
-          <ul className="divide-y-[1.5px] divide-line overflow-hidden rounded-xl border-[1.5px] border-line bg-card">
-            {shows.map((s) => {
-              const incomplete = !s.city || !s.venue_name;
-              const times = [s.doors_time && `Doors ${formatTime(s.doors_time)}`, s.show_time && `Show ${formatTime(s.show_time)}`].filter(Boolean).join(", ");
-              return (
-                <li key={s.id}>
-                  <Link href={`/a/${artistId}/shows/${s.id}`} className="grid grid-cols-[5.5rem_1fr_auto] items-center gap-4 px-4 py-3 !no-underline text-stage hover:bg-paper">
-                    <span className="font-display text-lg font-semibold leading-tight">
-                      {formatDate(s.show_date, { month: "short", day: "numeric" })}<br />
-                      <span className="font-sans text-sm font-normal text-mute">{formatDate(s.show_date, { weekday: "short", year: "numeric" })}</span>
-                    </span>
-                    <span>
-                      <span className={`font-semibold ${!s.city ? "text-mute" : ""}`}>{s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD"}</span><br />
-                      <span className="muted">{s.venue_name ?? "Venue TBD"}{times ? `. ${times}` : ""}</span>
-                    </span>
-                    {s.status === "draft" && incomplete ? <span className="pill text-mute">Needs details</span> : <ShowStatus status={s.status} />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+          <section className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="list min-w-[40rem]">
+                <thead><tr><th className="!pt-4">Date</th><th className="!pt-4">City</th><th className="!pt-4">Venue</th><th className="!pt-4">Times</th><th className="!pt-4">Status</th></tr></thead>
+                <tbody>
+                  {shows.map((s) => {
+                    const href = `/a/${artistId}/shows/${s.id}`;
+                    const times = [s.doors_time && `Doors ${formatTime(s.doors_time)}`, s.show_time && `Show ${formatTime(s.show_time)}`].filter(Boolean).join(", ");
+                    return (
+                      <tr key={s.id} className="hover:bg-paper">
+                        <td className="whitespace-nowrap"><Link href={href} className="text-ink">{formatDate(s.show_date, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}</Link></td>
+                        <td className={s.city ? "font-semibold" : "text-mute"}>{s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD"}</td>
+                        <td className={s.venue_name ? "" : "text-mute"}>{s.venue_name ?? "Venue TBD"}</td>
+                        <td className="muted whitespace-nowrap text-[13px]">{times || "Not set"}</td>
+                        <td><ShowStatus status={s.status} incomplete={!s.city || !s.venue_name} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       )}
 
       <ShowBuilder key={shows.length} action={bulkCreateShows.bind(null, artistId, tourId)} existingDates={shows.map((s) => s.show_date)} />
 
       <details className="panel">
-        <summary className="cursor-pointer font-semibold">Tour settings</summary>
+        <summary className="cursor-pointer text-[16px] font-extrabold">Tour settings</summary>
         <form action={updateTour.bind(null, artistId, tourId)} className="mt-4 grid max-w-xl gap-4">
           <label className="field"><span>Tour name</span><input className="input" name="name" required defaultValue={tour.name} /></label>
           <label className="field"><span>Notes for your team</span><textarea className="input" name="description" defaultValue={tour.description ?? ""} /></label>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
-import { Wordmark } from "@/components/Wordmark";
+import { AuthShell } from "@/app/(auth)/AuthShell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { acceptInvite } from "./actions";
@@ -17,37 +17,29 @@ export default async function Invite({ params, searchParams }: P) {
   const inv = (data as { artist_name: string; role: MemberRole; email: string; state: string }[] | null)?.[0];
   const next = `/invite/${token}`;
 
+  if (!inv || inv.state !== "open") {
+    return (
+      <AuthShell title="This invite can't be used"
+        subtitle={<>{inv?.state === "accepted" ? "It's already been accepted." : inv?.state === "expired" ? "It has expired." : "It was revoked, or the link is wrong."} Ask the artist to send a new one.</>}>
+        {profile && <Link className="btn btn-ghost" href="/dashboard">Go to your artists</Link>}
+      </AuthShell>
+    );
+  }
   return (
-    <main className="mx-auto grid min-h-dvh max-w-md content-center gap-8 px-5 py-10">
-      <Wordmark />
-      {!inv || inv.state !== "open" ? (
-        <div>
-          <h1>This invite can&apos;t be used</h1>
-          <p className="mt-3">
-            {inv?.state === "accepted" ? "It's already been accepted." : inv?.state === "expired" ? "It has expired." : "It was revoked or the link is wrong."}{" "}
-            Ask the artist to send a new one.
-          </p>
-          {profile && <Link className="btn btn-ghost mt-6" href="/dashboard">Go to your artists</Link>}
-        </div>
+    <AuthShell title={`Join ${inv.artist_name}`} subtitle={<>You&apos;ve been invited as <strong>{ROLE_LABEL[inv.role].toLowerCase()}</strong> for {inv.email}.</>}>
+      <Flash err={err} />
+      {profile ? (
+        profile.email === inv.email ? (
+          <form action={acceptInvite.bind(null, token)}><SubmitButton size="lg" block pendingText="Joining…">Accept invite</SubmitButton></form>
+        ) : (
+          <p className="alert alert-yellow">You&apos;re signed in as {profile.email}. Sign out, then sign in or create an account with {inv.email} to accept.</p>
+        )
       ) : (
-        <div>
-          <h1>Join {inv.artist_name}</h1>
-          <p className="mt-3">You&apos;ve been invited as <strong>{ROLE_LABEL[inv.role].toLowerCase()}</strong> for {inv.email}.</p>
-          <div className="mt-6"><Flash err={err} /></div>
-          {profile ? (
-            profile.email === inv.email ? (
-              <form action={acceptInvite.bind(null, token)} className="mt-2"><SubmitButton pendingText="Joining…">Accept invite</SubmitButton></form>
-            ) : (
-              <p className="panel mt-2">You&apos;re signed in as {profile.email}. Sign out, then sign in or create an account with {inv.email} to accept.</p>
-            )
-          ) : (
-            <div className="mt-2 flex flex-wrap gap-3">
-              <Link className="btn btn-primary" href={`/signup?next=${encodeURIComponent(next)}`}>Create account</Link>
-              <Link className="btn btn-ghost" href={`/login?next=${encodeURIComponent(next)}`}>I have an account</Link>
-            </div>
-          )}
+        <div className="grid gap-3">
+          <Link className="btn btn-lg w-full" href={`/signup?next=${encodeURIComponent(next)}`}>Create account</Link>
+          <Link className="btn btn-ghost w-full" href={`/login?next=${encodeURIComponent(next)}`}>I have an account</Link>
         </div>
       )}
-    </main>
+    </AuthShell>
   );
 }
