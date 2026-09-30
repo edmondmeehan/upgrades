@@ -45,7 +45,7 @@ export async function startCheckout(fd: FormData) {
       client_reference_id: h.hold_id,
       metadata: { hold_id: h.hold_id, show_product_id: sp },
       payment_intent_data: {
-        application_fee_amount: h.service_fee_cents, // P&T's service fee; Stripe bills its own fee to the artist
+        ...(h.service_fee_cents > 0 ? { application_fee_amount: h.service_fee_cents } : {}), // P&T's service fee (none under some promos)
         description: `${h.product_name} x ${h.quantity}: ${h.artist_name}, ${where} ${h.show_date}`,
         metadata: { hold_id: h.hold_id, show_product_id: sp },
       },

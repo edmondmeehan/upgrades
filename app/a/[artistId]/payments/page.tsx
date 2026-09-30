@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, requirementLabel, stripeState, STRIPE_STATE_LABEL, type ArtistStripe } from "@/lib/stripe";
 import { pct } from "@/lib/util";
-import { startPayoutSetup, refreshStripe, startCardSetup } from "./actions";
+import { startPayoutSetup, refreshStripe, startCardSetup, redeemPromo } from "./actions";
 
 export const metadata = { title: "Payments" };
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
@@ -18,6 +18,8 @@ export default async function Payments({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err } = await searchParams;
   const { supabase, artist, role } = await requireArtist(artistId, ["owner", "accountant"]);
+  const { data: promoRows } = await supabase.rpc("active_promo", { p_artist: artistId });
+  const promo = (promoRows as { code: string; fee_bps: number; ends_at: string | null; show_limit: number | null; description: string | null }[] | null)?.[0] ?? null;
   const canAct = role === "owner";
   const { data: row } = await supabase.from("artist_stripe").select("*").eq("artist_id", artistId).maybeSingle<ArtistStripe>();
   const live = !!getStripe() && !!createAdminClient();
@@ -94,6 +96,20 @@ export default async function Payments({ params, searchParams }: P) {
 
       <section className="panel grid gap-3">
         <h2>How the money works</h2>
+        {promo ? (
+          <div className="alert alert-green flex-col gap-1">
+            <span className="font-extrabold">Promo {promo.code}: {promo.fee_bps === 0 ? "no service fee" : `${promo.fee_bps / 100}% service fee`}</span>
+            <span className="!font-medium">
+              {promo.show_limit ? `Covers your next ${promo.show_limit} show date${promo.show_limit === 1 ? "" : "s"}` : "Covers every show"}
+              {promo.ends_at ? ` until ${new Date(promo.ends_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : ""}. After that it goes back to {artist.fee_bps / 100}%.
+            </span>
+          </div>
+        ) : role !== "accountant" && (
+          <form action={redeemPromo.bind(null, artistId)} className="flex flex-wrap items-end gap-2 rounded-2xl bg-paper p-4">
+            <label className="field flex-1"><span>Have a promo code?</span><input name="code" className="input input-sm font-mono uppercase" placeholder="SPRING5" autoComplete="off" /></label>
+            <SubmitButton size="sm" variant="ghost" pendingText="Applying…">Apply</SubmitButton>
+          </form>
+        )}
         <p className="text-[15px]">
           You set the price. Fans see a {pct(artist.fee_bps)} service fee added on top, which goes to P&amp;T. Stripe&apos;s processing fee on the full charge comes out of your share.
         </p>

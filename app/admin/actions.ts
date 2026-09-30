@@ -129,3 +129,34 @@ export async function setMyDailyReport(on: boolean) {
   await supabase.from("profiles").update({ daily_report: on }).eq("id", profile.id);
   redirect(withMsg("/admin/team", "ok", on ? "You'll get the daily sales email every morning." : "Daily sales email turned off for you."));
 }
+
+// ── Promo codes ──────────────────────────────────────────────
+const promoBack = "/admin/promos";
+export async function createPromo(fd: FormData) {
+  const { supabase } = await requireSuperAdmin();
+  const code = String(fd.get("code") ?? "").trim().toUpperCase().replace(/\s+/g, "") ||
+    Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => "23456789ABCDEFGHJKMNPQRSTUVWXYZ"[b % 31]).join("");
+  if (!/^[A-Z0-9-]{3,30}$/.test(code)) redirect(withMsg(promoBack, "err", "Codes are 3 to 30 letters, numbers or dashes."));
+  const fee = Number(String(fd.get("fee_percent") ?? "").replace("%", ""));
+  if (!Number.isFinite(fee) || fee < 0 || fee > 50) redirect(withMsg(promoBack, "err", "Set the promo service fee between 0% and 50%."));
+  const num = (k: string) => { const v = String(fd.get(k) ?? "").trim(); return v ? Math.floor(Number(v)) : null; };
+  const months = num("months"), shows = num("show_limit"), max = num("max_redemptions");
+  if (!months && !shows) redirect(withMsg(promoBack, "err", "Give the promo a length: a number of months, a number of show dates, or both."));
+  const expires = String(fd.get("expires_at") ?? "").trim();
+  const { error } = await supabase.rpc("admin_save_promo", {
+    p_id: null, p_code: code, p_description: String(fd.get("description") ?? ""), p_fee_bps: Math.round(fee * 100),
+    p_months: months, p_show_limit: shows, p_max: max, p_expires: expires ? new Date(`${expires}T23:59:59-05:00`).toISOString() : null, p_active: true,
+  });
+  if (error) redirect(withMsg(promoBack, "err", /duplicate|unique/i.test(error.message) ? `The code ${code} already exists.` : cleanError(error)));
+  revalidatePath(promoBack);
+  redirect(withMsg(promoBack, "ok", `Promo ${code} created.`));
+}
+
+export async function setPromoActive(id: string, code: string, active: boolean) {
+  const { supabase } = await requireSuperAdmin();
+  const { data: c } = await supabase.from("promo_codes").select("description, max_redemptions, expires_at").eq("id", id).single();
+  await supabase.rpc("admin_save_promo", { p_id: id, p_code: code, p_description: c?.description ?? "", p_fee_bps: 0, p_months: null,
+    p_show_limit: null, p_max: c?.max_redemptions ?? null, p_expires: c?.expires_at ?? null, p_active: active });
+  revalidatePath(promoBack);
+  redirect(withMsg(promoBack, "ok", active ? `${code} is active again.` : `${code} is turned off. Artists who already redeemed it keep their deal.`));
+}

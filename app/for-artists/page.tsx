@@ -4,7 +4,8 @@ import { Icon } from "@/components/Icon";
 
 export const metadata = { title: "For artists" };
 
-export default async function ForArtists() {
+export default async function ForArtists({ searchParams }: { searchParams: Promise<{ promo?: string }> }) {
+  const { promo } = await searchParams;
   return (
     <div className="min-h-screen bg-white">
       <section className="home-top onDark">
@@ -21,6 +22,7 @@ export default async function ForArtists() {
             Build your tour, set your own prices, check fans in from your phone, and send their meet &amp; greet photos after.
             Built by Please &amp; Thank You, who have run VIP on tour for more than 20 years.
           </p>
+          {promo && <p className="mb-4 inline-flex rounded-full bg-yellow px-4 py-2 text-[14px] font-bold text-ink">Promo code {promo.toUpperCase()} will be applied when you set up your artist.</p>}
           <div className="flex flex-wrap gap-3">
             <Link href="/signup" className="btn btn-yellow btn-lg">Create an artist account</Link>
             <Link href="/login" className="btn btn-lg !bg-transparent !shadow-[inset_0_0_0_1.5px_rgba(255,255,255,.45)] hover:!shadow-[inset_0_0_0_1.5px_#f2d64b]">Sign in</Link>

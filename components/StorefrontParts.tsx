@@ -64,7 +64,7 @@ export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compa
 export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme; show: StoreShow; s: Store; err?: string }) {
   const upcoming = p.on_sale_at && new Date(p.on_sale_at) > new Date();
   const soldOut = p.remaining <= 0;
-  const fee = Math.round(p.price_cents * s.fee_bps / 10000);
+  const fee = Math.round(p.price_cents * (show.fee_bps ?? s.fee_bps) / 10000); // promo codes can lower this per show
   const maxQty = Math.min(4, p.remaining);
   return (
     <div id={`p-${p.id}`} className="grid scroll-mt-6 overflow-hidden rounded-2xl border border-line bg-white">
@@ -114,7 +114,7 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
             <BuyButton label={`Get VIP, ${dollars(p.price_cents)}`} bg={t.accent} fg={t.accentFg} />
           </form>
         )}
-        <p className="help text-center">{fee > 0 ? `Plus a ${dollars(fee)} service fee each.` : ""} Concert ticket sold separately.</p>
+        <p className="help text-center">{fee > 0 ? `Plus a ${dollars(fee)} service fee each.` : "No service fee."} Concert ticket sold separately.</p>
         <div className="flex justify-center">
           <ShareButtons menu url={`${storeUrl(s.handle, show.slug)}#p-${p.id}`} title={`${p.name}: ${s.name} in ${show.city}`}
             text={`${p.name} for ${s.name} in ${cityOf(show)} on ${formatDate(show.date, { month: "short", day: "numeric" })}`} />

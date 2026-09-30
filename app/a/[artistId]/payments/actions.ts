@@ -93,3 +93,15 @@ export async function startCardSetup(artistId: string) {
   } catch (e) { fail(back, e); }
   redirect(url);
 }
+
+/** Owner adds a promo code (from marketing) to lower the service fee fans pay. */
+export async function redeemPromo(artistId: string, fd: FormData) {
+  const { supabase } = await requireArtist(artistId, ["owner"]);
+  const back = `/a/${artistId}/payments`;
+  const code = String(fd.get("code") ?? "").trim();
+  if (!code) redirect(withMsg(back, "err", "Enter a promo code."));
+  const { data, error } = await supabase.rpc("redeem_promo", { p_artist: artistId, p_code: code });
+  if (error) redirect(withMsg(back, "err", error.message.replace(/^.*?: /, "")));
+  const r = data as { code: string };
+  redirect(withMsg(back, "ok", `Promo ${r.code} applied. Fans now see the lower service fee at checkout.`));
+}

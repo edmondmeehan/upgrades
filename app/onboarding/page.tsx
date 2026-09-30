@@ -3,12 +3,14 @@ import { Shell, PageHead } from "@/components/Shell";
 import { Flash, type Msg } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { createArtist } from "./actions";
+import { cookies } from "next/headers";
 
 export const metadata = { title: "Set up your artist" };
 
 export default async function Onboarding({ searchParams }: { searchParams: Msg }) {
   const { profile } = await requireUser();
   const { ok, err } = await searchParams;
+  const promo = (await cookies()).get("promo")?.value ?? "";
   return (
     <Shell email={profile.email} isAdmin={profile.is_super_admin}>
       <div className="grid max-w-xl gap-6">
@@ -28,6 +30,8 @@ export default async function Onboarding({ searchParams }: { searchParams: Msg }
             <small>Lowercase letters, numbers, and dashes. This is the link you&apos;ll share with fans.</small>
           </label>
           <label className="field"><span>Official website</span><input className="input" name="website" type="text" inputMode="url" placeholder="yourband.com" /></label>
+          <label className="field"><span>Promo code (optional)</span><input className="input max-w-xs font-mono uppercase" name="promo" defaultValue={promo} autoComplete="off" />
+            {promo && <small>Your promo code from the link you followed is filled in.</small>}</label>
           <div><SubmitButton pendingText="Setting up…">Create artist</SubmitButton></div>
         </form>
       </div>
