@@ -1,7 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { requireArtist } from "@/lib/auth";
+import { requireArtist, requireUser } from "@/lib/auth";
 import { sendEmail, siteUrl } from "@/lib/email";
 import { cleanError, slugify, withMsg } from "@/lib/util";
 import { isValidTimeZone } from "@/lib/timezones";
@@ -239,4 +239,10 @@ export async function updateArtist(artistId: string, fd: FormData) {
     .update({ name: str(fd, "name"), website: opt(fd, "website"), support_email: opt(fd, "support_email")?.toLowerCase() ?? null })
     .eq("id", artistId);
   done(`/a/${artistId}/settings`, error, "Settings saved.");
+}
+
+// ── First-time walkthrough ───────────────────────────────────
+export async function finishWalkthrough() {
+  const { supabase, user } = await requireUser();
+  await supabase.from("profiles").update({ walkthrough_done_at: new Date().toISOString() }).eq("id", user.id);
 }

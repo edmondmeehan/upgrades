@@ -4,13 +4,16 @@ import { Flash } from "@/components/Flash";
 import { PageHead } from "@/components/Shell";
 import { StatusPill } from "@/components/StatusPill";
 import type { Submission } from "@/lib/types";
+import { Walkthrough } from "@/components/Walkthrough";
+import { walkthroughSteps } from "@/lib/walkthrough";
+import { finishWalkthrough } from "./actions";
 
-type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
+type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string; tour?: string }> };
 
 export default async function Overview({ params, searchParams }: P) {
   const { artistId } = await params;
-  const { ok, err } = await searchParams;
-  const { supabase, artist, role } = await requireArtist(artistId);
+  const { ok, err, tour } = await searchParams;
+  const { supabase, artist, role, profile, user } = await requireArtist(artistId);
   const base = `/a/${artistId}`;
 
   const [{ count: tourCount }, { count: showCount }, { count: publishedCount }, { data: sub }, { data: pay }] = await Promise.all([
@@ -24,9 +27,31 @@ export default async function Overview({ params, searchParams }: P) {
       .maybeSingle<{ charges_enabled: boolean; payouts_enabled: boolean; card_last4: string | null }>(),
   ]);
 
+  // First-time walkthrough (or replay with ?tour=1).
+  const [{ data: me }, { count: pkgCount }, { data: design }] = await Promise.all([
+    supabase.from("profiles").select("walkthrough_done_at").eq("id", user.id).single<{ walkthrough_done_at: string | null }>(),
+    supabase.from("products").select("id", { count: "exact", head: true }).eq("artist_id", artistId).eq("is_sample", false),
+    supabase.from("artists").select("brand_color, header_image_url").eq("id", artistId).single<{ brand_color: string | null; header_image_url: string | null }>(),
+  ]);
+  const walkthrough = (tour || !me?.walkthrough_done_at) ? (
+    <Walkthrough finish={finishWalkthrough} steps={walkthroughSteps({
+      base, artistName: artist.name, firstName: profile.name?.split(" ")[0] ?? null, role, approved: artist.status === "approved",
+      hasShows: (showCount ?? 0) > 0, hasPackages: (pkgCount ?? 0) > 0, paymentsReady: !!(pay?.charges_enabled && pay?.payouts_enabled),
+      hasDesign: !!(design?.brand_color || design?.header_image_url),
+    })} />
+  ) : null;
+
   const head = (
-    <PageHead title={artist.name} eyebrow="Overview"
-      aside={artist.status === "approved" ? <Link href={`/${artist.handle}`} className="btn btn-ghost">View storefront</Link> : <StatusPill status={artist.status} />} />
+    <>
+      {walkthrough}
+      <PageHead title={artist.name} eyebrow="Overview"
+        aside={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`${base}?tour=1`} className="btn btn-text btn-sm">Take the tour</Link>
+            {artist.status === "approved" ? <Link href={`/${artist.handle}`} className="btn btn-ghost">View storefront</Link> : <StatusPill status={artist.status} />}
+          </div>
+        } />
+    </>
   );
 
   if (role === "accountant") {
