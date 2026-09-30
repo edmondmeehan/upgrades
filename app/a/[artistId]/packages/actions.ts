@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireArtist } from "@/lib/auth";
 import { cleanError, withMsg } from "@/lib/util";
-import type { ShowProduct } from "@/lib/packages";
+import { parseCents as cents, type ShowProduct } from "@/lib/packages";
 
-type ShowRow = { show_id: string; price: string; capacity: string };
+type ShowRow = { show_id: string; price: string | null; capacity: string | null }; // null = package default
 
 const KINDS = new Set(["meet_greet", "soundcheck", "early_entry", "merch_bundle", "qa_acoustic", "custom"]);
-const cents = (v: string) => Math.round(Number(String(v).replace(/[$,\s]/g, "")) * 100);
+
 const iso = (v: FormDataEntryValue | null) => { const s = String(v ?? ""); return s && !Number.isNaN(Date.parse(s)) ? new Date(s).toISOString() : null; };
 
 export async function savePackage(artistId: string, productId: string | null, fd: FormData) {
@@ -26,7 +26,11 @@ export async function savePackage(artistId: string, productId: string | null, fd
     includes_photo: fd.get("includes_photo") === "on",
     included,
     image_url: String(fd.get("image_url") ?? "").trim() || null,
+    default_price_cents: cents(String(fd.get("default_price") ?? "")),
+    default_capacity: Math.floor(Number(fd.get("default_capacity"))),
   };
+  if (!Number.isFinite(product.default_price_cents) || product.default_price_cents < 100) redirect(withMsg(back, "err", "Set a default price of at least $1."));
+  if (!Number.isFinite(product.default_capacity) || product.default_capacity < 1) redirect(withMsg(back, "err", "Set a default quantity of at least 1."));
 
   let rows: ShowRow[] = [];
   try { rows = JSON.parse(String(fd.get("shows") ?? "[]")); } catch { /* handled below */ }
@@ -34,12 +38,22 @@ export async function savePackage(artistId: string, productId: string | null, fd
   if (onSale && offSale && offSale <= onSale) redirect(withMsg(back, "err", "Off-sale time has to be after the on-sale time."));
   const presale = String(fd.get("presale_code") ?? "").trim().toUpperCase().replace(/\s+/g, "") || null;
 
-  const clean: { show_id: string; price_cents: number; capacity: number }[] = [];
+  const clean: { show_id: string; price_cents: number; capacity: number; uses_default_price: boolean; uses_default_capacity: boolean }[] = [];
   for (const r of rows) {
-    const p = cents(r.price), c = Math.floor(Number(r.capacity));
-    if (!Number.isFinite(p) || p < 100) redirect(withMsg(back, "err", "Every selected show needs a price of at least $1."));
-    if (!Number.isFinite(c) || c < 1) redirect(withMsg(back, "err", "Every selected show needs a quantity of at least 1."));
-    clean.push({ show_id: r.show_id, price_cents: p, capacity: c });
+    const p = r.price ? cents(r.price) : product.default_price_cents;
+    const c = r.capacity ? Math.floor(Number(r.capacity)) : product.default_capacity;
+    if (!Number.isFinite(p) || p < 100) redirect(withMsg(back, "err", "Every show needs a price of at least $1."));
+    if (!Number.isFinite(c) || c < 1) redirect(withMsg(back, "err", "Every show needs a quantity of at least 1."));
+    clean.push({ show_id: r.show_id, price_cents: p, capacity: c, uses_default_price: !r.price, uses_default_capacity: !r.capacity });
+  }
+
+  // Check sold counts before changing anything, so a quantity can't drop below what's already sold.
+  if (productId) {
+    const { data: sales } = await supabase.from("v_show_product_sales").select("show_id, units, units_refunded").eq("product_id", productId)
+      .returns<{ show_id: string; units: number; units_refunded: number }[]>();
+    const soldAt = new Map((sales ?? []).map((r) => [r.show_id, Number(r.units) - Number(r.units_refunded)]));
+    const short = clean.find((c) => c.capacity < (soldAt.get(c.show_id) ?? 0));
+    if (short) redirect(withMsg(back, "err", `One show has already sold ${soldAt.get(short.show_id)}, so its quantity can't go below that.`));
   }
 
   let id = productId;

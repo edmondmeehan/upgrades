@@ -25,11 +25,16 @@ export const KIND_LABEL: Record<string, string> = {
 export type Product = {
   id: string; artist_id: string; name: string; description: string | null; kind: string; includes_photo: boolean;
   included: string[]; image_url: string | null; archived_at: string | null; is_sample: boolean;
+  default_price_cents: number | null; default_capacity: number | null;
 };
 
 export type ShowProduct = {
   id: string; artist_id: string; show_id: string; product_id: string; price_cents: number; capacity: number;
   on_sale_at: string | null; off_sale_at: string | null; presale_code: string | null; active: boolean; is_sample: boolean;
+  uses_default_price: boolean; uses_default_capacity: boolean;
 };
 
 export const dollars = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: cents % 100 ? 2 : 0 });
+
+/** "$1,250.50" -> 125050. NaN when unreadable. */
+export const parseCents = (v: string) => Math.round(Number(String(v).replace(/[$,\s]/g, "")) * 100);

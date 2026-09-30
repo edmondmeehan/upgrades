@@ -97,7 +97,10 @@ export default async function TourPage({ params, searchParams }: P) {
               <h2>VIP packages on this tour</h2>
               <p className="muted mt-1">{pkgs.size ? "What fans can buy at these shows." : "Next step: add the upgrades fans can buy at these shows."}</p>
             </div>
-            <Link href={`/a/${artistId}/packages?tour=${tourId}`} className="btn">{pkgs.size ? "Add a package" : "Add a VIP package"}</Link>
+            <div className="flex flex-wrap gap-2">
+              {pkgs.size > 0 && <Link href={`/a/${artistId}/tours/${tourId}/inventory`} className="btn">Manage inventory</Link>}
+              <Link href={`/a/${artistId}/packages?tour=${tourId}`} className={`btn ${pkgs.size ? "btn-ghost" : ""}`}>{pkgs.size ? "Add a package" : "Add a VIP package"}</Link>
+            </div>
           </div>
           {pkgs.size > 0 && (
             <ul className="grid gap-2">

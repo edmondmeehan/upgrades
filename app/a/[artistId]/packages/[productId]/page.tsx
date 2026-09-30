@@ -18,7 +18,7 @@ export default async function EditPackage({ params, searchParams }: P) {
   const { data: p } = await supabase.from("products").select("*").eq("id", productId).eq("artist_id", artistId).maybeSingle<Product>();
   if (!p) notFound();
   const { data: first } = await supabase.from("show_products").select("*").eq("product_id", productId).limit(1).maybeSingle<ShowProduct>();
-  const shows = await loadFormShows(supabase, artistId, { productId, defaultPrice: first ? first.price_cents / 100 : 100, defaultCapacity: first?.capacity ?? 30 });
+  const shows = await loadFormShows(supabase, artistId, { productId });
   const onSale = shows.filter((s) => s.selected).length;
 
   return (
@@ -30,7 +30,9 @@ export default async function EditPackage({ params, searchParams }: P) {
       <Flash ok={ok} err={err} />
       <PackageForm action={savePackage.bind(null, artistId, productId)} artistId={artistId} shows={shows} submitLabel="Save changes"
         initial={{ kind: p.kind, name: p.name, description: p.description ?? "", included: p.included ?? [], includes_photo: p.includes_photo, image_url: p.image_url,
-          on_sale_at: first?.on_sale_at ?? null, off_sale_at: first?.off_sale_at ?? null, presale_code: first?.presale_code ?? null }} />
+          on_sale_at: first?.on_sale_at ?? null, off_sale_at: first?.off_sale_at ?? null, presale_code: first?.presale_code ?? null,
+          default_price: p.default_price_cents != null ? String(p.default_price_cents / 100) : first ? String(first.price_cents / 100) : "100",
+          default_capacity: String(p.default_capacity ?? first?.capacity ?? 30) }} />
       <form action={archivePackage.bind(null, artistId, productId, !p.archived_at)} className="border-t border-line pt-6">
         {p.archived_at
           ? <SubmitButton variant="ghost">Restore package</SubmitButton>

@@ -14,7 +14,7 @@ export default async function NewPackage({ params, searchParams }: P) {
   const { template, tour, err } = await searchParams;
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
   const t = TEMPLATES.find((x) => x.kind === template) ?? TEMPLATES[TEMPLATES.length - 1];
-  const shows = await loadFormShows(supabase, artistId, { defaultPrice: t.price, defaultCapacity: t.capacity, preselectTour: tour });
+  const shows = await loadFormShows(supabase, artistId, { preselectTour: tour });
 
   return (
     <div className="grid max-w-4xl gap-6">
@@ -23,7 +23,7 @@ export default async function NewPackage({ params, searchParams }: P) {
       </PageHead>
       <Flash err={err} />
       <PackageForm action={savePackage.bind(null, artistId, null)} artistId={artistId} shows={shows} submitLabel="Save package"
-        initial={{ kind: t.kind, name: t.name, description: t.description, included: t.included, includes_photo: t.includes_photo, image_url: null, on_sale_at: null, off_sale_at: null, presale_code: null }} />
+        initial={{ kind: t.kind, name: t.name, description: t.description, included: t.included, includes_photo: t.includes_photo, image_url: null, on_sale_at: null, off_sale_at: null, presale_code: null, default_price: String(t.price), default_capacity: String(t.capacity) }} />
     </div>
   );
 }

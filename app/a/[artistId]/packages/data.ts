@@ -6,7 +6,7 @@ type ShowRow = { id: string; show_date: string; city: string | null; region: str
 
 /** Every show for the artist, with this package's price, quantity and units sold filled in where it's already on sale. */
 export async function loadFormShows(supabase: SupabaseClient, artistId: string, opts: {
-  productId?: string; defaultPrice: number; defaultCapacity: number; preselectTour?: string;
+  productId?: string; preselectTour?: string;
 }): Promise<FormShow[]> {
   const [{ data: shows }, { data: sps }, { data: sales }] = await Promise.all([
     supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, tours(name)").eq("artist_id", artistId)
@@ -24,7 +24,9 @@ export async function loadFormShows(supabase: SupabaseClient, artistId: string, 
       id: s.id, date: s.show_date, label: s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD", venue: s.venue_name,
       tour_id: s.tour_id, tour_name: s.tours?.name ?? "Tour", past: s.show_date < today,
       selected: sp ? sp.active : !opts.productId && (!opts.preselectTour || opts.preselectTour === s.tour_id) && s.show_date >= today,
-      price: sp ? String(sp.price_cents / 100) : String(opts.defaultPrice), capacity: String(sp?.capacity ?? opts.defaultCapacity),
+      // "" means the show follows the package default
+      price: sp && !sp.uses_default_price ? String(sp.price_cents / 100) : "",
+      capacity: sp && !sp.uses_default_capacity ? String(sp.capacity) : "",
       sold: sp ? sold.get(sp.id) ?? 0 : 0,
     };
   });
