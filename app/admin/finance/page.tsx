@@ -7,6 +7,7 @@ import { YearPicker } from "@/components/FinanceNav";
 import { StatusPill } from "@/components/StatusPill";
 import { money, rate, sum } from "@/lib/money";
 import { monthlySeries, parseYear, yearRange, yearsWithData, type Monthly } from "@/lib/finance";
+import { reconcileFees } from "@/lib/reconcile";
 import type { ArtistStatus } from "@/lib/types";
 
 export const metadata = { title: "Platform finance" };
@@ -23,6 +24,7 @@ export default async function PlatformFinance({ searchParams }: P) {
     supabase.from("artists").select("id, name, handle, status, fee_bps").returns<ArtistRow[]>(),
   ]);
   const m = monthly ?? [];
+  const rec = await reconcileFees(supabase, `${from}T00:00:00-05:00`, `${to}T00:00:00-05:00`);
   const a = artists ?? [];
   const byArtist = new Map<string, Monthly[]>();
   m.forEach((r) => byArtist.set(r.artist_id, [...(byArtist.get(r.artist_id) ?? []), r]));
@@ -71,7 +73,23 @@ export default async function PlatformFinance({ searchParams }: P) {
             ))}
             <div className="flex justify-between gap-3 border-t-2 border-ink pt-2.5"><dt className="font-extrabold">Net fee revenue</dt><dd className="font-extrabold tabular-nums text-violet">{money(sum(m, "platform_net_cents"))}</dd></div>
           </dl>
-          <p className="alert alert-gray mt-4 !text-[13px]">Once Stripe is connected, this compares against application fees in the P&amp;T Stripe platform account and flags any gap.</p>
+          <div className="mt-4 grid gap-2 border-t border-line pt-4">
+            <h3 className="text-[15px] font-extrabold">Check against Stripe</h3>
+            {rec.state === "no_stripe" ? <p className="alert alert-gray !text-[13px]">Connect Stripe to check these numbers against what Stripe actually collected.</p>
+              : rec.state === "error" ? <p className="alert alert-yellow !text-[13px]">Couldn&apos;t reach Stripe to check: {rec.message}</p>
+              : (
+                <>
+                  <dl className="grid text-[14px]">
+                    <div className="flex justify-between gap-3 py-1.5"><dt>Recorded here (real sales)</dt><dd className="font-semibold tabular-nums">{money(rec.ours)}</dd></div>
+                    <div className="flex justify-between gap-3 py-1.5"><dt>Collected by Stripe</dt><dd className="font-semibold tabular-nums">{money(rec.stripe)}</dd></div>
+                  </dl>
+                  {rec.state === "ok"
+                    ? <p className="alert alert-green !text-[13px]">Matches. {rec.stripeCount} application fee{rec.stripeCount === 1 ? "" : "s"} in Stripe{rec.livemode ? "" : " (test mode)"}.</p>
+                    : <p className="alert alert-red !text-[13px]">Off by {money(Math.abs(rec.diff))}: Stripe has {rec.diff > 0 ? "more" : "less"} than our records ({rec.stripeCount} fees in Stripe, {rec.oursCount} orders with a fee here). Usually a refund or dispute made directly in Stripe, or an order that didn&apos;t record. Check Stripe, then Connect, then Collected fees.</p>}
+                  {rec.truncated && <p className="help">Checked the first 5,000 fees only.</p>}
+                </>
+              )}
+          </div>
         </section>
       </div>
 

@@ -48,6 +48,7 @@ export function adminNav(): NavItem[] {
     { href: "/admin/finance", label: "Platform finance", icon: "dollar" },
     { href: "/admin/payments", label: "Stripe", icon: "card" },
     { href: "/admin/promos", label: "Promo codes", icon: "tag" },
+    { href: "/admin/growth", label: "Growth", icon: "trend" },
     { href: "/admin/team", label: "Admins", icon: "users" },
     { href: "/admin/audit", label: "Audit log", icon: "list" },
   ];
