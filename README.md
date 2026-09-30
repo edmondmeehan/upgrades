@@ -45,6 +45,19 @@ git push -u origin main
 ### 4. Make yourself Super Admin
 Sign up in the app with eddie@please.co, then run `supabase/make-super-admin.sql` in the SQL editor.
 
+### 5. Stripe (payments)
+P&T's Stripe account is the platform; each artist connects a Stripe Express account to get paid.
+1. In Stripe, turn on Connect (Connect, then Get started) and choose Express accounts. Fill in the platform profile and branding.
+2. In Vercel, add environment variables, then redeploy:
+   - `STRIPE_SECRET_KEY`: Stripe, then Developers, then API keys (start with `sk_test_...`)
+   - `SUPABASE_SERVICE_ROLE_KEY`: Supabase, then Project Settings, then API keys (the secret service role key)
+3. In Stripe, then Developers, then Webhooks, add two endpoints at `https://upgrades.ontour.vip/api/stripe/webhook`:
+   - Events on your account: `checkout.session.completed`. Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+   - Events on connected accounts: `account.updated`. Put its signing secret in `STRIPE_CONNECT_WEBHOOK_SECRET`.
+4. P&T admin, then Stripe, shows a checklist of what's connected.
+
+Artists set up payouts and a card on file from Payments in their sidebar.
+
 ### Local development
 ```bash
 cp .env.example .env.local   # fill in Supabase values

@@ -13,13 +13,15 @@ export default async function Overview({ params, searchParams }: P) {
   const { supabase, artist, role } = await requireArtist(artistId);
   const base = `/a/${artistId}`;
 
-  const [{ count: tourCount }, { count: showCount }, { count: publishedCount }, { data: sub }] = await Promise.all([
+  const [{ count: tourCount }, { count: showCount }, { count: publishedCount }, { data: sub }, { data: pay }] = await Promise.all([
     supabase.from("tours").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
     supabase.from("shows").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
     supabase.from("shows").select("id", { count: "exact", head: true }).eq("artist_id", artistId).eq("status", "published"),
     isOwnerish(role)
       ? supabase.from("verification_submissions").select("*").eq("artist_id", artistId).order("created_at", { ascending: false }).limit(1).maybeSingle<Submission>()
       : Promise.resolve({ data: null }),
+    supabase.from("artist_stripe").select("charges_enabled, payouts_enabled, card_last4").eq("artist_id", artistId)
+      .maybeSingle<{ charges_enabled: boolean; payouts_enabled: boolean; card_last4: string | null }>(),
   ]);
 
   const head = (
@@ -45,7 +47,7 @@ export default async function Overview({ params, searchParams }: P) {
     { done: true, label: "Create your artist account" },
     { done: submitted, label: "Submit verification", href: isOwnerish(role) ? `${base}/verification` : undefined },
     { done: artist.status === "approved" || artist.status === "suspended", label: "Get approved by P&T" },
-    { done: false, label: "Connect Stripe and add a card on file", later: true },
+    { done: !!(pay?.charges_enabled && pay?.payouts_enabled && pay?.card_last4), label: "Connect Stripe and add a card on file", href: isOwnerish(role) ? `${base}/payments` : undefined },
     { done: (tourCount ?? 0) > 0, label: "Add a tour", href: canEditShows(role) ? `${base}/tours` : undefined },
     { done: (publishedCount ?? 0) > 0, label: "Publish a show", href: canEditShows(role) ? `${base}/tours` : undefined },
   ];
@@ -80,8 +82,7 @@ export default async function Overview({ params, searchParams }: P) {
                   {s.done ? "✓" : i + 1}
                 </span>
                 <span className={`flex-1 ${s.done ? "text-mute" : "font-semibold"}`}>{s.label}</span>
-                {s.later ? <span className="badge b-neutral">Coming soon</span>
-                  : !s.done && s.href ? <Link href={s.href} className="btn btn-sm">Start</Link> : null}
+                {!s.done && s.href ? <Link href={s.href} className="btn btn-sm">Start</Link> : null}
                 <span className="sr-only">{s.done ? "Done" : "Not done"}</span>
               </li>
             ))}

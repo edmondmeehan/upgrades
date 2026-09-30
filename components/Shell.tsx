@@ -16,6 +16,7 @@ export function artistNav(id: string, role: string): NavItem[] {
     { href: base, label: "Overview", icon: "home", exact: true },
     ...(canEdit ? [{ href: `${base}/tours`, label: "Tours & shows", icon: "calendar" as const }] : []),
     ...(role !== "rep" ? [{ href: `${base}/financials`, label: "Financials", icon: "dollar" as const }] : []),
+    ...(role !== "rep" ? [{ href: `${base}/payments`, label: "Payments", icon: "card" as const }] : []),
     ...(owner ? [
       { href: `${base}/verification`, label: "Verification", icon: "badge" as const },
       { href: `${base}/team`, label: "Team", icon: "users" as const },
@@ -30,6 +31,8 @@ export function globalNav(isAdmin: boolean): NavItem[] {
     ...(isAdmin ? [
       { href: "/admin", label: "P&T admin", icon: "shield" as const, exact: true },
       { href: "/admin/finance", label: "Platform finance", icon: "dollar" as const },
+      { href: "/admin/payments", label: "Stripe", icon: "card" as const },
+      { href: "/admin/team", label: "Admins", icon: "users" as const },
       { href: "/admin/audit", label: "Audit log", icon: "list" as const },
     ] : []),
     { href: "/account", label: "Account", icon: "user" },

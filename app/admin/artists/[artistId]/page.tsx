@@ -5,6 +5,7 @@ import { Flash } from "@/components/Flash";
 import { StatusPill } from "@/components/StatusPill";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PageHead } from "@/components/Shell";
+import { stripeState, STRIPE_STATE_LABEL, type ArtistStripe } from "@/lib/stripe";
 import { reviewArtist, setFee, toggleManaged, openAsAdmin, loadSampleSales, clearSampleSales } from "../../actions";
 import { formatDateTime, pct } from "@/lib/util";
 import { ROLE_LABEL, type Artist, type MemberRole, type Submission } from "@/lib/types";
@@ -22,7 +23,7 @@ export default async function ReviewArtist({ params, searchParams }: P) {
   const { data: artist } = await supabase.from("artists").select("*").eq("id", artistId).maybeSingle<Artist>();
   if (!artist) notFound();
 
-  const [{ data: subs }, { data: team }, { data: audit }, { count: showCount }, { count: sampleCount }] = await Promise.all([
+  const [{ data: subs }, { data: team }, { data: audit }, { count: showCount }, { count: sampleCount }, { data: pay }] = await Promise.all([
     supabase.from("verification_submissions").select("*").eq("artist_id", artistId).order("created_at", { ascending: false }).returns<Submission[]>(),
     supabase.from("artist_members").select("role, profiles!artist_members_user_id_fkey(name, email)").eq("artist_id", artistId)
       .returns<{ role: MemberRole; profiles: { name: string | null; email: string } }[]>(),
@@ -30,6 +31,7 @@ export default async function ReviewArtist({ params, searchParams }: P) {
       .order("created_at", { ascending: false }).limit(30).returns<Audit[]>(),
     supabase.from("shows").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("artist_id", artistId).eq("is_sample", true),
+    supabase.from("artist_stripe").select("*").eq("artist_id", artistId).maybeSingle<ArtistStripe>(),
   ]);
   const sub = subs?.[0];
   const act = reviewArtist.bind(null, artistId);
@@ -60,7 +62,7 @@ export default async function ReviewArtist({ params, searchParams }: P) {
                   {sub.proof_method === "third_party" && <><br />{sub.third_party_name} ({sub.third_party_relation}), {sub.third_party_email}<br />
                     <span className={`badge mt-1 ${sub.third_party_confirmed_at ? "b-published" : "b-neutral"}`}>{sub.third_party_confirmed_at ? `Confirmed ${formatDateTime(sub.third_party_confirmed_at)}` : "Not confirmed yet"}</span></>}
                 </dd>
-                <dt className="th pt-0.5">Stripe identity</dt><dd className="muted">Checked by Stripe once payouts are connected (next phase)</dd>
+                <dt className="th pt-0.5">Stripe</dt><dd><span className={`badge ${STRIPE_STATE_LABEL[stripeState(pay)][1]}`}>{STRIPE_STATE_LABEL[stripeState(pay)][0]}</span>{pay?.card_last4 && <span className="muted ml-2 text-[14px]">Card on file ending {pay.card_last4}</span>}</dd>
                 {sub.notes && <><dt className="th pt-0.5">Their notes</dt><dd className="whitespace-pre-line">{sub.notes}</dd></>}
                 {sub.reviewer_notes && <><dt className="th pt-0.5">Review notes</dt><dd className="whitespace-pre-line">{sub.reviewer_notes}</dd></>}
               </dl>
@@ -73,8 +75,8 @@ export default async function ReviewArtist({ params, searchParams }: P) {
               <fieldset className="grid gap-2">
                 <legend className="mb-1 font-semibold">Checklist</legend>
                 {[["website", "Website is real and belongs to this artist"], ["socials", "Socials are official and link to each other"],
-                  ["proof", "Proof checks out"], ["stripe", "Stripe identity verified (next phase)"]].map(([k, label]) => (
-                  <label key={k} className="flex items-center gap-3"><input type="checkbox" name={`check_${k}`} defaultChecked={!!sub.checklist?.[k]} className="check" disabled={k === "stripe"} />{label}</label>
+                  ["proof", "Proof checks out"], ["stripe", stripeState(pay) === "ready" ? "Stripe verified their identity" : "Stripe identity (they haven't finished Stripe setup yet)"]].map(([k, label]) => (
+                  <label key={k} className="flex items-center gap-3"><input type="checkbox" name={`check_${k}`} defaultChecked={k === "stripe" ? stripeState(pay) === "ready" : !!sub.checklist?.[k]} className="check" disabled={k === "stripe" && stripeState(pay) !== "ready"} />{label}</label>
                 ))}
               </fieldset>
               <label className="field"><span>Notes</span><textarea className="input" name="notes" /><small>Required when requesting changes. The artist sees this.</small></label>

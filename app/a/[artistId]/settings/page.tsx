@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHead } from "@/components/Shell";
 import { requireArtist } from "@/lib/auth";
 import { Flash } from "@/components/Flash";
@@ -26,7 +27,7 @@ export default async function Settings({ params, searchParams }: P) {
       <section className="panel grid gap-2">
         <h2>Payments</h2>
         <p>Fans pay your price plus a {pct(artist.fee_bps)} service fee. Nothing comes out of your price except card processing.</p>
-        <p className="muted">Connecting Stripe and adding a card on file arrive in the next phase.</p>
+        <p><Link href={`/a/${artistId}/payments`}>Set up payouts and your card on file</Link></p>
       </section>
     </div>
   );

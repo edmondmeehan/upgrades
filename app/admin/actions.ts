@@ -67,3 +67,29 @@ export async function clearSampleSales(artistId: string) {
   const { error } = await supabase.rpc("clear_sample_sales", { p_artist: artistId });
   redirect(withMsg(`/admin/artists/${artistId}`, error ? "err" : "ok", error ? cleanError(error) : "Sample sales removed."));
 }
+
+// ── P&T admin team ───────────────────────────────────────────
+export async function inviteAdmin(fd: FormData) {
+  const { supabase, profile } = await requireSuperAdmin();
+  const email = String(fd.get("email") ?? "").trim().toLowerCase();
+  const { data: token, error } = await supabase.rpc("create_admin_invitation", { p_email: email });
+  if (error) redirect(withMsg("/admin/team", "err", cleanError(error)));
+  const { sent } = await sendEmail({
+    to: email,
+    subject: "You've been invited to OnTour Upgrades admin",
+    text: `${profile.name ?? profile.email} invited you to be a P&T admin on OnTour Upgrades. Admins approve artists, set fees, and see platform finance.\n\nAccept the invite (link works for 7 days):\n${siteUrl()}/admin-invite/${token}`,
+  });
+  redirect(withMsg("/admin/team", "ok", sent ? `Invite sent to ${email}.` : `Invite created for ${email}. Email isn't connected yet, so copy the link below and send it yourself.`));
+}
+
+export async function revokeAdminInvite(id: string) {
+  const { supabase } = await requireSuperAdmin();
+  const { error } = await supabase.rpc("revoke_admin_invitation", { p_id: id });
+  redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Invite revoked."));
+}
+
+export async function removeAdmin(userId: string) {
+  const { supabase } = await requireSuperAdmin();
+  const { error } = await supabase.rpc("remove_admin", { p_user: userId });
+  redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Admin access removed."));
+}
