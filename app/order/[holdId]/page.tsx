@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe";
 import { fulfillSession, loadOrder } from "@/lib/checkout";
 import { dollars } from "@/lib/packages";
 import { formatTime } from "@/lib/util";
+import { qrSvg } from "@/lib/qr";
 
 export const metadata = { title: "Your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -31,6 +32,7 @@ export default async function Order({ params, searchParams }: P) {
   const date = new Date(`${v.show.show_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
   const city = `${v.show.city ?? ""}${v.show.region ? `, ${v.show.region}` : ""}`;
   const pending = !v.order && v.hold.status === "pending";
+  const qrs = await Promise.all(v.passes.map((p) => qrSvg(p.code)));
 
   return (
     <div className="min-h-screen bg-paper">
@@ -61,15 +63,25 @@ export default async function Order({ params, searchParams }: P) {
             </div>
             <div className="card grid gap-3 p-6">
               <h2>{v.passes.length > 1 ? "Your passes" : "Your pass"}</h2>
-              <p className="muted text-[14px]">Show {v.passes.length > 1 ? "these codes" : "this code"} at VIP check-in. You&apos;ll get check-in details, including where and when to arrive, a few days before the show.</p>
-              <ul className="grid gap-2">
+              <p className="muted text-[14px]">Show {v.passes.length > 1 ? "these QR codes" : "this QR code"} at VIP check-in, or give your name. You&apos;ll get check-in details, including where and when to arrive, a few days before the show.</p>
+              <ul className="grid gap-4">
                 {v.passes.map((p, i) => (
-                  <li key={p.code} className="flex items-center justify-between rounded-2xl bg-navy px-5 py-4 text-white">
-                    <span className="text-[13px] font-semibold text-[#b7b1cc]">Guest {i + 1}</span>
-                    <span className="font-mono text-[22px] font-bold tracking-[0.12em] text-yellow">{p.code}</span>
+                  <li key={p.code} className="overflow-hidden rounded-[20px] bg-navy text-white">
+                    <div className="flex items-center justify-between px-5 pt-4">
+                      <span className="text-[13px] font-semibold text-[#b7b1cc]">{v.passes.length > 1 ? `Guest ${i + 1} of ${v.passes.length}` : "VIP pass"}</span>
+                      <span className="text-[13px] font-bold text-yellow">{v.product.name}</span>
+                    </div>
+                    <div className="m-4 grid justify-items-center gap-2 rounded-2xl bg-white p-5 text-ink">
+                      <div className="w-full max-w-[260px] [&_svg]:h-auto [&_svg]:w-full" aria-label={`QR code for pass ${p.code}`} role="img" dangerouslySetInnerHTML={{ __html: qrs[i] }} />
+                      <span className="font-mono text-[22px] font-bold tracking-[0.14em]">{p.code}</span>
+                    </div>
+                    <div className="px-4 pb-4">
+                      <a href={`/order/${holdId}/pass/${p.code}`} download={`vip-pass-${p.code}.png`} className="btn btn-yellow w-full">Save pass to my phone</a>
+                    </div>
                   </li>
                 ))}
               </ul>
+              <p className="help">Tip: on iPhone, open the saved pass and add it to your Photos favorites so it&apos;s one tap away at the door. Brighten your screen when you scan.</p>
               <p className="help">This is a VIP upgrade. Your concert ticket is separate.{v.product.includes_photo ? " Your meet & greet photos will be emailed after the show." : ""}</p>
             </div>
             <Link href={`/${v.artist.handle}`} className="btn btn-ghost justify-self-start">Back to {v.artist.name}</Link>

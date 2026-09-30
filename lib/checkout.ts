@@ -86,7 +86,8 @@ async function sendConfirmation(holdId: string) {
       ["Total paid", dollars(v.order.total_cents)],
       [v.passes.length > 1 ? "Pass codes" : "Pass code", v.passes.map((p) => p.code).join(", ")],
     ],
-    button: { label: "View your order", url: `${siteUrl()}/order/${holdId}` },
-    footnote: "Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.",
+    images: v.passes.map((p, i) => ({ src: `${siteUrl()}/qr/${p.code}.png`, alt: `QR code for pass ${p.code}`, caption: v.passes.length > 1 ? `${p.code}  (guest ${i + 1})` : p.code })),
+    button: { label: "View your passes", url: `${siteUrl()}/order/${holdId}` },
+    footnote: "Show the QR code at VIP check-in. You can also save each pass as an image from your order page. Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.",
   });
 }

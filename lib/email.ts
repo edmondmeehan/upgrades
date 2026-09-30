@@ -16,6 +16,7 @@ export type EmailContent = {
   button?: { label: string; url: string };
   details?: [string, string][]; // label/value rows in a grey box
   footnote?: string;          // small print under the button
+  images?: { src: string; alt: string; caption?: string }[]; // e.g. pass QR codes
   preheader?: string;         // inbox preview text
 };
 
@@ -45,6 +46,11 @@ ${c.eyebrow ? `<p style="margin:0 0 8px;font:700 12px/1.2 ${FONT};letter-spacing
 <h1 style="margin:0 0 16px;font:800 26px/1.15 ${FONT};letter-spacing:-.02em;color:#0B0B0F">${esc(c.title)}</h1>
 ${c.body.map(p).join("\n")}
 ${details}
+${(c.images ?? []).map((im) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td align="center" style="background:#130056;border-radius:16px;padding:16px">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#ffffff;border-radius:12px;padding:14px">
+<img src="${esc(im.src)}" alt="${esc(im.alt)}" width="220" height="220" style="display:block;width:220px;height:220px;border:0">
+${im.caption ? `<p style="margin:8px 0 0;font:700 18px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#0B0B0F">${esc(im.caption)}</p>` : ""}
+</td></tr></table></td></tr></table>`).join("\n")}
 ${button}
 ${c.footnote ? `<p style="margin:0;font:400 13px/1.45 ${FONT};color:#5A5866">${esc(c.footnote)}</p>` : ""}
 </td></tr>
