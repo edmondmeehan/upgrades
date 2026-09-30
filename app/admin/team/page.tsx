@@ -2,7 +2,8 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash, type Msg } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { inviteAdmin, revokeAdminInvite, removeAdmin } from "../actions";
+import { inviteAdmin, revokeAdminInvite, removeAdmin, sendTestEmail } from "../actions";
+import { emailConfigured } from "@/lib/email";
 import { siteUrl } from "@/lib/email";
 import { formatDateTime } from "@/lib/util";
 
@@ -69,6 +70,11 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
           <label className="field"><span>Email</span><input className="input" type="email" name="email" required placeholder="name@please.co" /></label>
           <p className="help">They&apos;ll sign in or create an account with this email, then accept. The link works for 7 days.</p>
           <div><SubmitButton pendingText="Sending…">Send invite</SubmitButton></div>
+        </form>
+        <form action={sendTestEmail} className="panel grid gap-3 lg:col-start-2">
+          <h2>Email</h2>
+          <p className="help">{emailConfigured() ? "Resend is connected. Send yourself a test to check delivery." : "RESEND_API_KEY isn't set in Vercel, so emails aren't sending."}</p>
+          <div><SubmitButton variant="ghost" pendingText="Sending…">Send test email</SubmitButton></div>
         </form>
       </div>
     </>

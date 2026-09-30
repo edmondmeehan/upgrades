@@ -207,7 +207,7 @@ export async function inviteMember(artistId: string, fd: FormData) {
   const scope = role === "accountant"
     ? "read-only access to settlements, payouts, and year-end exports"
     : "access to set up shows, check-in details, scanning, and photos";
-  const { sent } = await sendEmail({
+  const { sent, error: mailErr } = await sendEmail({
     to: email,
     subject: `${artist.name} invited you to OnTour Upgrades`,
     eyebrow: "Team invitation",
@@ -216,7 +216,8 @@ export async function inviteMember(artistId: string, fd: FormData) {
     button: { label: "Accept invitation", url: link },
     footnote: "This link works for 14 days. Sign in or create an account with this email address to accept.",
   });
-  done(`/a/${artistId}/team`, null, sent ? `Invite sent to ${email}.` : `Invite created for ${email}. Email isn't set up yet, so copy the link below and send it yourself.`);
+  revalidatePath(`/a/${artistId}/team`);
+  redirect(withMsg(`/a/${artistId}/team`, sent ? "ok" : "err", sent ? `Invite sent to ${email}.` : `Invite created for ${email}, but the email didn't send (${mailErr ?? "email isn't connected"}). Copy the link below and send it yourself.`));
 }
 
 export async function revokeInvite(artistId: string, invitationId: string) {

@@ -80,7 +80,7 @@ export async function inviteAdmin(fd: FormData) {
   const email = String(fd.get("email") ?? "").trim().toLowerCase();
   const { data: token, error } = await supabase.rpc("create_admin_invitation", { p_email: email });
   if (error) redirect(withMsg("/admin/team", "err", cleanError(error)));
-  const { sent } = await sendEmail({
+  const { sent, error: mailErr } = await sendEmail({
     to: email,
     subject: "You've been invited to OnTour Upgrades admin",
     eyebrow: "Staff invitation",
@@ -89,7 +89,7 @@ export async function inviteAdmin(fd: FormData) {
     button: { label: "Accept invitation", url: `${siteUrl()}/admin-invite/${token}` },
     footnote: "This link works for 7 days. If you weren't expecting it, you can ignore this email.",
   });
-  redirect(withMsg("/admin/team", "ok", sent ? `Invite sent to ${email}.` : `Invite created for ${email}. Email isn't connected yet, so copy the link below and send it yourself.`));
+  redirect(withMsg("/admin/team", sent ? "ok" : "err", sent ? `Invite sent to ${email}.` : `Invite created for ${email}, but the email didn't send (${mailErr ?? "email isn't connected"}). Copy the link below and send it yourself.`));
 }
 
 export async function revokeAdminInvite(id: string) {
@@ -102,4 +102,16 @@ export async function removeAdmin(userId: string) {
   const { supabase } = await requireSuperAdmin();
   const { error } = await supabase.rpc("remove_admin", { p_user: userId });
   redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Admin access removed."));
+}
+
+/** Sends a test email to the signed-in admin and shows Resend's answer on screen. */
+export async function sendTestEmail() {
+  const { profile } = await requireSuperAdmin();
+  const { sent, error } = await sendEmail({
+    to: profile.email, subject: "OnTour Upgrades test email", eyebrow: "Test", title: "Email is working",
+    body: ["If you're reading this, OnTour Upgrades can send email from upgrades@ontour.vip."],
+  });
+  redirect(withMsg("/admin/team", sent ? "ok" : "err", sent
+    ? `Test email sent to ${profile.email}. If it isn't in your inbox within a minute, check spam, then Resend's Emails page.`
+    : `Test email failed. ${error ?? ""}`));
 }

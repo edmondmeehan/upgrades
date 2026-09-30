@@ -81,13 +81,17 @@ export async function sendEmail({ to, subject, replyTo, ...content }: EmailConte
       body: JSON.stringify({ from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!res.ok) {
-      const body = (await res.text()).slice(0, 300);
+      const raw = (await res.text()).slice(0, 300);
+      let body = raw;
+      try { body = (JSON.parse(raw) as { message?: string }).message ?? raw; } catch { /* keep raw */ }
       let hint = "";
       if (res.status === 401 || res.status === 403) hint = /domain/i.test(body) ? " (the sending domain isn't verified in Resend)" : " (Resend rejected the API key or from-address)";
       if (res.status === 422) hint = " (check the from-address is on your verified domain, e.g. Please & Thank You <upgrades@ontour.vip>)";
       console.error(`[email] Resend ${res.status}${hint} ${body}`);
-      return { sent: false, error: `Resend ${res.status}${hint}` };
+      return { sent: false, error: `Resend said: ${body}${hint}` };
     }
+    const { id } = (await res.json().catch(() => ({}))) as { id?: string };
+    console.log(`[email] sent "${subject}" to ${to}${id ? ` (Resend id ${id})` : ""}`);
     return { sent: true };
   } catch (e) {
     console.error("[email] send failed", e);
