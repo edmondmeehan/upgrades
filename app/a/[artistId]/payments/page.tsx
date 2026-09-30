@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, requirementLabel, stripeState, STRIPE_STATE_LABEL, type ArtistStripe } from "@/lib/stripe";
 import { pct } from "@/lib/util";
-import { startPayoutSetup, openStripeDashboard, refreshStripe, startCardSetup } from "./actions";
+import { startPayoutSetup, refreshStripe, startCardSetup } from "./actions";
 
 export const metadata = { title: "Payments" };
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
@@ -39,8 +39,9 @@ export default async function Payments({ params, searchParams }: P) {
           <span className={`badge ${cls}`}>{label}</span>
         </div>
         <p className="text-[15px]">
-          Fans pay you directly through Stripe, so you&apos;re the seller of record and Stripe pays out to your bank on its normal schedule.
-          Stripe will ask for your legal name or business details, a bank account, and ID to confirm who you are.
+          Fans pay you directly through your own Stripe account, so you&apos;re the seller of record and Stripe pays out to your bank on its normal schedule.
+          Stripe will ask for your legal name or business details, a bank account, and ID to confirm who you are. You can sign in to your Stripe dashboard any time
+          to see payments, payouts, and disputes.
         </p>
 
         {state === "restricted" && row?.requirements_due?.length ? (
@@ -63,7 +64,7 @@ export default async function Payments({ params, searchParams }: P) {
             ) : (
               <>
                 {state !== "ready" && <form action={startPayoutSetup.bind(null, artistId)}><SubmitButton pendingText="Opening Stripe…">Continue setup</SubmitButton></form>}
-                {row?.details_submitted && <form action={openStripeDashboard.bind(null, artistId)}><SubmitButton variant="ghost" pendingText="Opening…">Open Stripe dashboard</SubmitButton></form>}
+                {row?.details_submitted && <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="btn btn-ghost">Open your Stripe dashboard</a>}
                 <form action={refreshStripe.bind(null, artistId)}><SubmitButton variant="text" pendingText="Checking…">Refresh status</SubmitButton></form>
               </>
             )}
@@ -74,11 +75,11 @@ export default async function Payments({ params, searchParams }: P) {
       <section className="panel grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2>Card on file</h2>
-          <span className={`badge ${row?.card_last4 ? "b-approved" : "b-neutral"}`}>{row?.card_last4 ? "Added" : "Not added"}</span>
+          <span className={`badge ${row?.card_last4 ? "b-approved" : "b-neutral"}`}>{row?.card_last4 ? "Added" : "Optional"}</span>
         </div>
         <p className="text-[15px]">
-          A backstop only. It&apos;s charged if your Stripe balance can&apos;t cover a refund, a card processing fee that Stripe doesn&apos;t return, or a chargeback.
-          Most of the time it&apos;s never used.
+          Optional. Refunds and chargebacks come out of your Stripe balance, and Stripe handles any shortfall with you directly.
+          A card on file lets P&amp;T settle anything else owed without chasing you.
         </p>
         {row?.card_last4 && (
           <div className="stat w-fit"><b className="capitalize">{row.card_brand} ending {row.card_last4}</b><span>Expires {row.card_exp}</span></div>

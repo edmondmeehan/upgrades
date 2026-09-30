@@ -47,7 +47,7 @@ export default async function Overview({ params, searchParams }: P) {
     { done: true, label: "Create your artist account" },
     { done: submitted, label: "Submit verification", href: isOwnerish(role) ? `${base}/verification` : undefined },
     { done: artist.status === "approved" || artist.status === "suspended", label: "Get approved by P&T" },
-    { done: !!(pay?.charges_enabled && pay?.payouts_enabled && pay?.card_last4), label: "Connect Stripe and add a card on file", href: isOwnerish(role) ? `${base}/payments` : undefined },
+    { done: !!(pay?.charges_enabled && pay?.payouts_enabled), label: "Connect Stripe to get paid", href: isOwnerish(role) ? `${base}/payments` : undefined },
     { done: (tourCount ?? 0) > 0, label: "Add a tour", href: canEditShows(role) ? `${base}/tours` : undefined },
     { done: (publishedCount ?? 0) > 0, label: "Publish a show", href: canEditShows(role) ? `${base}/tours` : undefined },
   ];

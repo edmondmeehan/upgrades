@@ -24,7 +24,7 @@ export default async function Signup({ searchParams }: { searchParams: Promise<{
           <input type="checkbox" name="terms" className="check mt-0.5" required />
           <span>
             I accept the artist terms, including that card processing fees aren&apos;t returned when an upgrade is refunded,
-            those fees are my cost, and the card on file may be charged for any shortfall.
+            those fees are my cost, and refunds and chargebacks come out of my own Stripe balance.
           </span>
         </label>
         <SubmitButton size="lg" block pendingText="Creating account…">Create account</SubmitButton>

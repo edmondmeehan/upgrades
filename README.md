@@ -46,8 +46,8 @@ git push -u origin main
 Sign up in the app with eddie@please.co, then run `supabase/make-super-admin.sql` in the SQL editor.
 
 ### 5. Stripe (payments)
-P&T's Stripe account is the platform; each artist connects a Stripe Express account to get paid.
-1. In Stripe, turn on Connect (Connect, then Get started) and choose Express accounts. Fill in the platform profile and branding.
+P&T's Stripe account is the platform. Each artist gets their own Stripe account (full Stripe Dashboard, Stripe covers negative balances) and is the seller on direct charges.
+1. In Stripe, turn on Connect (Connect, then Get started) and fill in the platform profile and branding.
 2. In Vercel, add environment variables, then redeploy:
    - `STRIPE_SECRET_KEY`: Stripe, then Developers, then API keys (start with `sk_test_...`)
    - `SUPABASE_SERVICE_ROLE_KEY`: Supabase, then Project Settings, then API keys (the secret service role key)

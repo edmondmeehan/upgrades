@@ -1,12 +1,16 @@
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { siteUrl } from "@/lib/email";
+
+export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const;
 
 let client: Stripe | null = null;
 
 export function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
-  if (!client) client = new Stripe(key, { appInfo: { name: "OnTour Upgrades", url: "https://upgrades.ontour.vip" } });
+  // Pinned so an SDK upgrade can't change API behavior without us noticing.
+  if (!client) client = new Stripe(key, { apiVersion: STRIPE_API_VERSION, appInfo: { name: "OnTour Upgrades", url: "https://upgrades.ontour.vip" } });
   return client;
 }
 
@@ -81,4 +85,17 @@ export function requirementLabel(code: string) {
   if (code.includes("ssn_last_4") || code.includes("id_number")) return "Tax ID or SSN";
   if (code.includes("business_profile")) return `Business details (${c})`;
   return c.charAt(0).toUpperCase() + c.slice(1);
+}
+
+/** A fresh Stripe onboarding link for an artist's connected account. Server-only helper, not an action. */
+export async function onboardingLink(artistId: string, accountId: string) {
+  const stripe = getStripe();
+  if (!stripe) throw new Error("Stripe isn't configured");
+  const link = await stripe.accountLinks.create({
+    account: accountId,
+    type: "account_onboarding",
+    refresh_url: `${siteUrl()}/a/${artistId}/payments/return?refresh=1`,
+    return_url: `${siteUrl()}/a/${artistId}/payments/return`,
+  });
+  return link.url;
 }

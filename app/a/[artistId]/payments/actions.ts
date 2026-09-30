@@ -1,7 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
-import { getStripe, saveAccount, type ArtistStripe } from "@/lib/stripe";
+import { getStripe, onboardingLink, saveAccount, type ArtistStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { siteUrl } from "@/lib/email";
 import { withMsg } from "@/lib/util";
@@ -24,7 +24,19 @@ function fail(back: string, e: unknown): never {
   redirect(withMsg(back, "err", msg));
 }
 
-/** Creates the artist's Stripe Express account if needed, then sends them to Stripe's onboarding. */
+/**
+ * Connected-account settings, per Stripe's recommendation for direct charges:
+ * the artist is the seller, Stripe bills them its fees, Stripe (not P&T) covers negative balances,
+ * Stripe collects onboarding requirements, and the artist uses the full Stripe Dashboard.
+ */
+const CONTROLLER = {
+  fees: { payer: "account" },
+  losses: { payments: "stripe" },
+  requirement_collection: "stripe",
+  stripe_dashboard: { type: "full" },
+} as const;
+
+/** Creates the artist's connected account if needed, then sends them to Stripe's onboarding. */
 export async function startPayoutSetup(artistId: string, fd: FormData) {
   const { back, stripe, row, artist, profile } = await context(artistId);
   let accountId = row?.stripe_account_id;
@@ -34,7 +46,7 @@ export async function startPayoutSetup(artistId: string, fd: FormData) {
   try {
     if (!accountId) {
       const account = await stripe.accounts.create({
-        type: "express",
+        controller: CONTROLLER,
         country,
         email: profile.email,
         capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
@@ -45,26 +57,12 @@ export async function startPayoutSetup(artistId: string, fd: FormData) {
           product_description: "VIP concert upgrades sold to fans through OnTour Upgrades",
         },
         metadata: { artist_id: artistId, handle: artist.handle },
-      });
+      }, { idempotencyKey: `ontour-account-${artistId}-${country}` }); // a double-click can't create two accounts
       await saveAccount(artistId, account);
       accountId = account.id;
     }
-    const link = await stripe.accountLinks.create({
-      account: accountId,
-      type: "account_onboarding",
-      refresh_url: `${siteUrl()}/a/${artistId}/payments/return?refresh=1`,
-      return_url: `${siteUrl()}/a/${artistId}/payments/return`,
-    });
-    url = link.url;
+    url = await onboardingLink(artistId, accountId);
   } catch (e) { fail(back, e); }
-  redirect(url);
-}
-
-export async function openStripeDashboard(artistId: string) {
-  const { back, stripe, row } = await context(artistId);
-  if (!row?.stripe_account_id) redirect(withMsg(back, "err", "Set up payouts first."));
-  let url: string;
-  try { url = (await stripe.accounts.createLoginLink(row.stripe_account_id)).url; } catch (e) { fail(back, e); }
   redirect(url);
 }
 
@@ -82,7 +80,10 @@ export async function startCardSetup(artistId: string) {
   try {
     let customerId = row?.customer_id;
     if (!customerId) {
-      const c = await stripe.customers.create({ email: profile.email, name: artist.name, metadata: { artist_id: artistId } });
+      const c = await stripe.customers.create(
+        { email: profile.email, name: artist.name, metadata: { artist_id: artistId } },
+        { idempotencyKey: `ontour-customer-${artistId}` },
+      );
       customerId = c.id;
       const { error } = await db.from("artist_stripe").upsert({ artist_id: artistId, customer_id: customerId }, { onConflict: "artist_id" });
       if (error) throw error;

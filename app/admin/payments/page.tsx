@@ -58,7 +58,7 @@ export default async function StripeAdmin() {
           <Check ok={connectHooks} label="Webhook for connected accounts"
             detail={connectHooks ? "Receiving artist account updates." : <>Add a second endpoint at the same URL listening to events on connected accounts, with <code>account.updated</code>. Put its signing secret in <code>STRIPE_CONNECT_WEBHOOK_SECRET</code>.</>} />
         </ul>
-        <p className="help mt-3">Connect must be turned on for the platform account (Stripe, then Connect, then Get started) with Express accounts, and your platform profile and branding filled in.</p>
+        <p className="help mt-3">Turn on Connect for the platform account (Stripe, then Connect, then Get started) and fill in the platform profile and branding. Artists get their own full Stripe Dashboard, pay Stripe&apos;s fees from their account, and Stripe covers negative balances, so P&amp;T isn&apos;t liable for artists&apos; refunds or chargebacks.</p>
       </section>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
