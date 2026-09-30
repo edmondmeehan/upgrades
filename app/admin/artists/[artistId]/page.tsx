@@ -5,7 +5,7 @@ import { Flash } from "@/components/Flash";
 import { StatusPill } from "@/components/StatusPill";
 import { SubmitButton } from "@/components/SubmitButton";
 import { PageHead } from "@/components/Shell";
-import { reviewArtist, setFee, toggleManaged, openAsAdmin } from "../../actions";
+import { reviewArtist, setFee, toggleManaged, openAsAdmin, loadSampleSales, clearSampleSales } from "../../actions";
 import { formatDateTime, pct } from "@/lib/util";
 import { ROLE_LABEL, type Artist, type MemberRole, type Submission } from "@/lib/types";
 
@@ -22,13 +22,14 @@ export default async function ReviewArtist({ params, searchParams }: P) {
   const { data: artist } = await supabase.from("artists").select("*").eq("id", artistId).maybeSingle<Artist>();
   if (!artist) notFound();
 
-  const [{ data: subs }, { data: team }, { data: audit }, { count: showCount }] = await Promise.all([
+  const [{ data: subs }, { data: team }, { data: audit }, { count: showCount }, { count: sampleCount }] = await Promise.all([
     supabase.from("verification_submissions").select("*").eq("artist_id", artistId).order("created_at", { ascending: false }).returns<Submission[]>(),
     supabase.from("artist_members").select("role, profiles!artist_members_user_id_fkey(name, email)").eq("artist_id", artistId)
       .returns<{ role: MemberRole; profiles: { name: string | null; email: string } }[]>(),
     supabase.from("audit_log").select("id, action, created_at, details, profiles(email)").eq("artist_id", artistId)
       .order("created_at", { ascending: false }).limit(30).returns<Audit[]>(),
     supabase.from("shows").select("id", { count: "exact", head: true }).eq("artist_id", artistId),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("artist_id", artistId).eq("is_sample", true),
   ]);
   const sub = subs?.[0];
   const act = reviewArtist.bind(null, artistId);
@@ -130,6 +131,15 @@ export default async function ReviewArtist({ params, searchParams }: P) {
             <label className="field"><span>Reason</span><input className="input" name="note" placeholder="Launch partner rate" /></label>
             <div><SubmitButton variant="dark">Save fee</SubmitButton></div>
           </form>
+          <section className="panel grid gap-3">
+            <h2>Finance</h2>
+            <p className="help">{sampleCount ? `${sampleCount} sample orders loaded for testing.` : "Fill this artist with realistic fake sales, refunds, disputes, and payouts to test reporting. Sample rows are labeled everywhere and can be removed."}</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/a/${artistId}/financials`} className="btn btn-dark btn-sm">Open financials</Link>
+              <form action={loadSampleSales.bind(null, artistId)}><SubmitButton variant="ghost" size="sm" pendingText="Loading…">{sampleCount ? "Reload sample sales" : "Load sample sales"}</SubmitButton></form>
+              {!!sampleCount && <form action={clearSampleSales.bind(null, artistId)}><SubmitButton variant="danger" size="sm" confirm="Remove all sample sales for this artist?">Remove sample</SubmitButton></form>}
+            </div>
+          </section>
           <form action={toggleManaged.bind(null, artistId, !artist.managed_candidate)} className="panel grid gap-3">
             <h2>Managed program</h2>
             <p className="help">{artist.managed_candidate ? "Flagged as a lead for a full-service P&T program." : "Flag artists who've outgrown self-serve."}</p>

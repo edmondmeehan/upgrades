@@ -29,6 +29,7 @@ export function globalNav(isAdmin: boolean): NavItem[] {
     { href: "/dashboard", label: "Your artists", icon: "grid", exact: true },
     ...(isAdmin ? [
       { href: "/admin", label: "P&T admin", icon: "shield" as const, exact: true },
+      { href: "/admin/finance", label: "Platform finance", icon: "dollar" as const },
       { href: "/admin/audit", label: "Audit log", icon: "list" as const },
     ] : []),
     { href: "/account", label: "Account", icon: "user" },

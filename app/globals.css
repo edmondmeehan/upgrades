@@ -176,3 +176,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+@media print {
+  .shell-side, .shell-top, .site-footer, .no-print, nextjs-portal { display: none !important; }
+  .shell { display: block; background: #fff; }
+  .page { padding: 0; max-width: none; }
+  .card, .panel, .stat { break-inside: avoid; }
+  body { font-size: 12px; }
+}

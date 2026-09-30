@@ -55,3 +55,15 @@ export async function openAsAdmin(artistId: string) {
   await supabase.rpc("log_assist", { p_artist: artistId });
   redirect(`/a/${artistId}`);
 }
+
+export async function loadSampleSales(artistId: string) {
+  const { supabase } = await requireSuperAdmin();
+  const { data, error } = await supabase.rpc("generate_sample_sales", { p_artist: artistId });
+  redirect(withMsg(`/admin/artists/${artistId}`, error ? "err" : "ok", error ? cleanError(error) : `Loaded ${data} sample orders. Open their financials to see them.`));
+}
+
+export async function clearSampleSales(artistId: string) {
+  const { supabase } = await requireSuperAdmin();
+  const { error } = await supabase.rpc("clear_sample_sales", { p_artist: artistId });
+  redirect(withMsg(`/admin/artists/${artistId}`, error ? "err" : "ok", error ? cleanError(error) : "Sample sales removed."));
+}
