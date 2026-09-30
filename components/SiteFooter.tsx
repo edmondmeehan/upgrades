@@ -10,6 +10,7 @@ export function SiteFooter() {
   return (
     <footer className="site-footer onDark">
       <div className="site-footer-in">
+        <p className="site-footer-from">Upgrades is a product from your friends at <a href="https://please.co" target="_blank" rel="noopener noreferrer">Please &amp; Thank You</a>.</p>
         <p>© {new Date().getFullYear()} Please &amp; Thank You. All Rights Reserved. PLEASE AND THANK YOU® and the Smirk Logo® are registered trademarks of Please and Thank You, Inc.</p>
         <nav aria-label="Legal">
           <ul>{LINKS.map(([label, href]) => <li key={href}><a href={href} target="_blank" rel="noopener noreferrer">{label}</a></li>)}</ul>

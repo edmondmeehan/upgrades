@@ -2,7 +2,6 @@ import { ImageResponse } from "next/og";
 import { loadOrder } from "@/lib/checkout";
 import { qrDataUrl } from "@/lib/qr";
 
-const LOGO = "https://please.co/cdn/shop/files/PTY_Logo_Type_Yellow_WhiteText.png?v=1768929642&width=440";
 
 /** A pass image fans can save to their phone's photos: QR, name, show and package. */
 export async function GET(_req: Request, { params }: { params: Promise<{ holdId: string; code: string }> }) {
@@ -17,9 +16,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ holdId:
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "#130056", color: "#ffffff", padding: 64, fontFamily: "sans-serif" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={LOGO} alt="" width={174} height={60} />
-          <div style={{ display: "flex", fontSize: 28, fontWeight: 700, color: "#f2d64b" }}>VIP PASS</div>
+          <div style={{ display: "flex", fontSize: 30, fontWeight: 800, letterSpacing: 4, color: "#f2d64b" }}>VIP PASS</div>
+          <div style={{ display: "flex", fontSize: 24, fontWeight: 600, color: "#b7b1cc" }}>{`Sold by ${v.artist.name}`}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", marginTop: 56 }}>
           <div style={{ display: "flex", fontSize: 72, fontWeight: 800, lineHeight: 1, color: "#f2d64b", textTransform: "uppercase", letterSpacing: -2 }}>{v.artist.name}</div>

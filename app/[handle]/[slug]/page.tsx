@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { StoreHero, ShowCard } from "@/components/StorefrontParts";
+import { StoreHero, ShowCard, ArtistDisclaimer } from "@/components/StorefrontParts";
 import { cityOf, loadStore, storeUrl, theme } from "@/lib/storefront";
 import { formatDate } from "@/lib/util";
 
@@ -40,6 +40,7 @@ export default async function ShowStore({ params, searchParams }: P) {
         <ul className="grid gap-5"><ShowCard sh={sh} s={s} t={t} linkTitle={false} err={q.err && q.pkg ? { pkg: q.pkg, msg: q.err.slice(0, 160) } : undefined} /></ul>
         {others > 0 && <Link href={`/${s.handle}`} className="btn btn-ghost justify-self-start">See all {others + 1} {s.name} shows</Link>}
       </main>
+      <ArtistDisclaimer name={s.name} handle={s.handle} />
     </div>
   );
 }

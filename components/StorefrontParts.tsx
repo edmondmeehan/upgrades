@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Logo } from "./Logo";
 import { Icon } from "./Icon";
 import { Countdown } from "./Countdown";
 import { ShareButtons } from "./ShareButtons";
@@ -23,7 +22,13 @@ export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compa
       )}
       <div className="home-wrap relative pb-9">
         <div className="home-top-bar">
-          <Logo href={`/${s.handle}`} label={`${s.name} upgrades`} chip={t.fg === "#0b0b0f"} />
+          <Link href={`/${s.handle}`} className="inline-flex items-center gap-2 text-[14px] font-extrabold uppercase tracking-[0.08em] !no-underline" style={{ color: t.fg }}>
+            {s.avatar_url && compact
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={s.avatar_url} alt="" className="size-8 rounded-full object-cover" />
+              : null}
+            VIP upgrades
+          </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href="/find-order" className="inline-flex h-[38px] items-center rounded-full px-3.5 text-[14px] font-bold !no-underline"
               style={{ color: t.fg, boxShadow: `inset 0 0 0 1.5px ${t.fg === "#ffffff" ? "rgba(255,255,255,.5)" : "rgba(0,0,0,.25)"}` }}>Find my order</Link>
@@ -134,5 +139,17 @@ export function ShowCard({ sh, s, t, linkTitle = true, err }: { sh: StoreShow; s
         ? <p className="help self-center">VIP upgrades for this show aren&apos;t on sale yet.</p>
         : <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">{sh.packages.map((p) => <PackageCard key={p.id} p={p} t={t} show={sh} s={s} err={err?.pkg === p.id ? err.msg : undefined} />)}</div>}
     </li>
+  );
+}
+
+/** Shown at the bottom of every artist page: who's selling, and who to contact. */
+export function ArtistDisclaimer({ name, handle, order }: { name: string; handle: string; order?: string }) {
+  return (
+    <aside className="home-wrap pb-10">
+      <p className="mx-auto max-w-[720px] rounded-2xl bg-paper px-5 py-4 text-center text-[13px] leading-relaxed text-mute">
+        VIP upgrades on this page are sold directly by {name}, not by Please &amp; Thank You. For questions about packages, orders, refunds or check-in,
+        please <Link href={`/${handle}/support${order ? `?order=${order}` : ""}`} className="font-semibold">contact {name} directly</Link>.
+      </p>
+    </aside>
   );
 }

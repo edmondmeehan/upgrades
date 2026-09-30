@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Logo } from "@/components/Logo";
+import { ArtistDisclaimer } from "@/components/StorefrontParts";
 import { Icon } from "@/components/Icon";
 import { getStripe } from "@/lib/stripe";
 import { fulfillSession, loadOrder } from "@/lib/checkout";
@@ -39,7 +39,7 @@ export default async function Order({ params, searchParams }: P) {
       {pending && <meta httpEquiv="refresh" content="4" />}
       <header className="bg-navy">
         <div className="home-wrap flex items-center justify-between py-5">
-          <Logo href={`/${v.artist.handle}`} label={`${v.artist.name} upgrades`} />
+          <Link href={`/${v.artist.handle}`} className="text-[15px] font-extrabold uppercase tracking-[0.06em] text-yellow !no-underline">{v.artist.name} VIP</Link>
           <Link href={`/${v.artist.handle}/support${v.order ? `?order=${v.order.confirmation_code}` : ""}`} className="fan-nav-btn solid"><Icon name="help" size={16} /><span>Fan Support</span></Link>
         </div>
       </header>
@@ -110,6 +110,7 @@ export default async function Order({ params, searchParams }: P) {
           </div>
         )}
       </main>
+      <ArtistDisclaimer name={v.artist.name} handle={v.artist.handle} order={v.order?.confirmation_code} />
     </div>
   );
 }

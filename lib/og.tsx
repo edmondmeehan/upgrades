@@ -3,7 +3,6 @@ import { theme, type Store, type StoreShow, cityOf } from "@/lib/storefront";
 import { dollars } from "@/lib/packages";
 
 export const OG_SIZE = { width: 1200, height: 630 };
-const LOGO = "https://please.co/cdn/shop/files/PTY_Logo_Type_Yellow_WhiteText.png?v=1768929642&width=440";
 
 /** Share card: artist colors and header image, name, and (for a show) city, date, and packages. */
 export function ogCard(s: Store, sh?: StoreShow) {
@@ -21,11 +20,7 @@ export function ogCard(s: Store, sh?: StoreShow) {
         <div style={{ position: "absolute", inset: 0, display: "flex", background: `linear-gradient(90deg, ${t.brand} 0%, ${t.brand}ee 45%, ${t.brand}88 100%)` }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 64, width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <div style={{ display: "flex", background: "#130056", borderRadius: 14, padding: "10px 14px" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={LOGO} alt="" width={127} height={44} />
-            </div>
-            <div style={{ display: "flex", fontSize: 26, fontWeight: 700, opacity: 0.85 }}>VIP upgrades</div>
+            <div style={{ display: "flex", fontSize: 28, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", opacity: 0.9 }}>VIP upgrades</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 900 }}>
             <div style={{ display: "flex", fontSize: s.name.length > 18 ? 76 : 96, fontWeight: 800, lineHeight: 0.95, letterSpacing: -3, textTransform: "uppercase", color: t.accent }}>{s.name}</div>

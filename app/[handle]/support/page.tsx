@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { StoreHero } from "@/components/StorefrontParts";
+import { StoreHero, ArtistDisclaimer } from "@/components/StorefrontParts";
 import { SubmitButton } from "@/components/SubmitButton";
 import { loadStore, theme } from "@/lib/storefront";
 import { submitSupport } from "./actions";
@@ -52,6 +52,7 @@ export default async function Support({ params, searchParams }: P) {
           </>
         )}
       </main>
+      <ArtistDisclaimer name={s.name} handle={s.handle} />
     </div>
   );
 }

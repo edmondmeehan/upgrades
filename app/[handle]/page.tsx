@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { StoreHero, ShowCard } from "@/components/StorefrontParts";
+import { StoreHero, ShowCard, ArtistDisclaimer } from "@/components/StorefrontParts";
 import { loadStore, storeUrl, theme } from "@/lib/storefront";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
@@ -35,6 +35,7 @@ export default async function Storefront({ params }: { params: Promise<{ handle:
           <ul className="grid gap-5">{s.shows.map((sh) => <ShowCard key={sh.slug} sh={sh} s={s} t={t} />)}</ul>
         )}
       </main>
+      <ArtistDisclaimer name={s.name} handle={s.handle} />
     </div>
   );
 }
