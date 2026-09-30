@@ -33,7 +33,7 @@ export default async function StripeAdmin() {
     } catch (e) { platformError = e instanceof Error ? e.message : "Couldn't reach Stripe"; }
   }
   const serviceKey = !!createAdminClient();
-  const hooks = !!process.env.STRIPE_WEBHOOK_SECRET, connectHooks = !!(process.env.STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET || process.env.STRIPE_CONNECT_WEBHOOK_SECRET);
+  const hooks = !!process.env.STRIPE_WEBHOOK_SECRET, connectHooks = !!process.env.STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET, checkoutHooks = !!process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
 
   const { data } = await supabase.from("artists").select("id, name, handle, status, artist_stripe(*)").order("name").returns<Row[]>();
   const rows = (data ?? []).map((r) => ({ ...r, s: Array.isArray(r.artist_stripe) ? r.artist_stripe[0] ?? null : r.artist_stripe }));
@@ -57,6 +57,8 @@ export default async function StripeAdmin() {
             detail={hooks ? "Receiving card-on-file events." : <>In Stripe, add an endpoint at <code>{siteUrl()}/api/stripe/webhook</code> listening to events on your account, with <code>checkout.session.completed</code>. Put its signing secret in <code>STRIPE_WEBHOOK_SECRET</code>.</>} />
           <Check ok={connectHooks} label="Webhook for artist account updates"
             detail={connectHooks ? "Receiving Accounts v2 updates." : <>Add a second destination at the same URL: events from your account, payload style <strong>Thin</strong>, with <code>v2.core.account.updated</code>, <code>v2.core.account[requirements].updated</code> and <code>v2.core.account[configuration.merchant].capability_status_updated</code>. Put its signing secret in <code>STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET</code>.</>} />
+          <Check ok={checkoutHooks} label="Webhook for fan checkout"
+            detail={checkoutHooks ? "Receiving fan payments from artists' accounts." : <>Add a third destination at the same URL: events from <strong>connected accounts</strong>, payload style Snapshot, with <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code> and <code>checkout.session.expired</code>. Put its signing secret in <code>STRIPE_CONNECT_WEBHOOK_SECRET</code>. Orders still record when fans return to the order page; this catches fans who close the tab.</>} />
         </ul>
         <p className="help mt-3">Turn on Connect for the platform account (Stripe, then Connect, then Get started) and fill in the platform profile and branding. Artists get their own full Stripe Dashboard, pay Stripe&apos;s fees from their account, and Stripe covers negative balances, so P&amp;T isn&apos;t liable for artists&apos; refunds or chargebacks.</p>
       </section>

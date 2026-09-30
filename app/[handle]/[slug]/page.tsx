@@ -4,7 +4,7 @@ import { StoreHero, ShowCard } from "@/components/StorefrontParts";
 import { cityOf, loadStore, storeUrl, theme } from "@/lib/storefront";
 import { formatDate } from "@/lib/util";
 
-type P = { params: Promise<{ handle: string; slug: string }> };
+type P = { params: Promise<{ handle: string; slug: string }>; searchParams?: Promise<{ err?: string; pkg?: string }> };
 
 async function load(params: P["params"]) {
   const { handle, slug } = await params;
@@ -26,8 +26,9 @@ export async function generateMetadata({ params }: P) {
   };
 }
 
-export default async function ShowStore({ params }: P) {
+export default async function ShowStore({ params, searchParams }: P) {
   const r = await load(params);
+  const q = (await searchParams) ?? {};
   if (!r) notFound();
   const { s, sh } = r;
   const t = theme(s);
@@ -36,7 +37,7 @@ export default async function ShowStore({ params }: P) {
     <div className="min-h-screen bg-white">
       <StoreHero s={s} t={t} compact />
       <main className="home-wrap grid gap-6 py-8">
-        <ul className="grid gap-5"><ShowCard sh={sh} s={s} t={t} linkTitle={false} /></ul>
+        <ul className="grid gap-5"><ShowCard sh={sh} s={s} t={t} linkTitle={false} err={q.err && q.pkg ? { pkg: q.pkg, msg: q.err.slice(0, 160) } : undefined} /></ul>
         {others > 0 && <Link href={`/${s.handle}`} className="btn btn-ghost justify-self-start">See all {others + 1} {s.name} shows</Link>}
       </main>
     </div>

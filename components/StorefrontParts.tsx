@@ -3,6 +3,8 @@ import { Logo } from "./Logo";
 import { Icon } from "./Icon";
 import { Countdown } from "./Countdown";
 import { ShareButtons } from "./ShareButtons";
+import { BuyButton } from "./BuyButton";
+import { startCheckout } from "@/app/[handle]/actions";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
 import { cityOf, storeUrl, type Store, type StorePackage, type StoreShow } from "@/lib/storefront";
@@ -50,9 +52,11 @@ export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compa
   );
 }
 
-export function PackageCard({ p, t, show, s }: { p: StorePackage; t: Theme; show: StoreShow; s: Store }) {
+export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme; show: StoreShow; s: Store; err?: string }) {
   const upcoming = p.on_sale_at && new Date(p.on_sale_at) > new Date();
   const soldOut = p.remaining <= 0;
+  const fee = Math.round(p.price_cents * s.fee_bps / 10000);
+  const maxQty = Math.min(4, p.remaining);
   return (
     <div id={`p-${p.id}`} className="grid scroll-mt-6 overflow-hidden rounded-2xl border border-line bg-white">
       {p.image_url && (
@@ -78,13 +82,30 @@ export function PackageCard({ p, t, show, s }: { p: StorePackage; t: Theme; show
           <button type="button" disabled className="btn w-full" style={{ background: "#e7e5ee", color: "#5a5866" }}>Sold out</button>
         ) : upcoming ? (
           <div className="rounded-2xl p-3" style={{ background: t.brand, color: t.fg }}><Countdown to={p.on_sale_at!} onDark={t.fg === "#ffffff"} /></div>
+        ) : !s.accepting_payments ? (
+          <button type="button" disabled className="btn w-full" style={{ background: t.accent, color: t.accentFg, opacity: 0.6 }}>Checkout opens soon</button>
         ) : (
-          <>
-            <span className="badge b-published justify-self-start">On sale now</span>
-            <button type="button" disabled className="btn w-full" style={{ background: t.accent, color: t.accentFg }}>Checkout opens soon</button>
-          </>
+          <form action={startCheckout} className="grid gap-2.5">
+            <input type="hidden" name="handle" value={s.handle} />
+            <input type="hidden" name="slug" value={show.slug} />
+            <input type="hidden" name="sp" value={p.id} />
+            {err && <p role="alert" className="alert alert-red !py-2.5 !text-[14px]">{err}</p>}
+            <div className="flex gap-2">
+              {maxQty > 1 && (
+                <label className="field w-24"><span className="!text-[12px]">Quantity</span>
+                  <select name="qty" className="input input-sm" defaultValue="1">{Array.from({ length: maxQty }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select>
+                </label>
+              )}
+              {p.presale && (
+                <label className="field flex-1"><span className="!text-[12px]">Presale code</span>
+                  <input name="code" className="input input-sm uppercase" required autoComplete="off" /></label>
+              )}
+            </div>
+            {maxQty <= 1 && <input type="hidden" name="qty" value="1" />}
+            <BuyButton label={`Get VIP, ${dollars(p.price_cents)}`} bg={t.accent} fg={t.accentFg} />
+          </form>
         )}
-        <p className="help text-center">Plus a service fee at checkout. Concert ticket sold separately.</p>
+        <p className="help text-center">{fee > 0 ? `Plus a ${dollars(fee)} service fee each.` : ""} Concert ticket sold separately.</p>
         <div className="flex justify-center">
           <ShareButtons menu url={`${storeUrl(s.handle, show.slug)}#p-${p.id}`} title={`${p.name}: ${s.name} in ${show.city}`}
             text={`${p.name} for ${s.name} in ${cityOf(show)} on ${formatDate(show.date, { month: "short", day: "numeric" })}`} />
@@ -94,7 +115,7 @@ export function PackageCard({ p, t, show, s }: { p: StorePackage; t: Theme; show
   );
 }
 
-export function ShowCard({ sh, s, t, linkTitle = true }: { sh: StoreShow; s: Store; t: Theme; linkTitle?: boolean }) {
+export function ShowCard({ sh, s, t, linkTitle = true, err }: { sh: StoreShow; s: Store; t: Theme; linkTitle?: boolean; err?: { pkg: string; msg: string } }) {
   const title = <p className="mt-1 text-[20px] font-extrabold leading-tight">{cityOf(sh)}</p>;
   return (
     <li id={sh.slug} className="card grid scroll-mt-6 gap-4 p-5 md:grid-cols-[220px_minmax(0,1fr)] md:p-6">
@@ -107,7 +128,7 @@ export function ShowCard({ sh, s, t, linkTitle = true }: { sh: StoreShow; s: Sto
       </div>
       {sh.packages.length === 0
         ? <p className="help self-center">VIP upgrades for this show aren&apos;t on sale yet.</p>
-        : <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">{sh.packages.map((p) => <PackageCard key={p.id} p={p} t={t} show={sh} s={s} />)}</div>}
+        : <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">{sh.packages.map((p) => <PackageCard key={p.id} p={p} t={t} show={sh} s={s} err={err?.pkg === p.id ? err.msg : undefined} />)}</div>}
     </li>
   );
 }

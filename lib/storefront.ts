@@ -11,6 +11,7 @@ export type StoreShow = { slug: string; date: string; venue: string; city: strin
 export type Store = {
   name: string; handle: string; website: string | null; bio: string | null; tagline: string | null; verified: boolean;
   brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null;
+  fee_bps: number; accepting_payments: boolean;
   shows: StoreShow[];
 };
 

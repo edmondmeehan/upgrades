@@ -54,6 +54,7 @@ P&T's Stripe account is the platform. Artists get Accounts v2 connected accounts
 3. In Stripe, then Developers, then Webhooks, add two endpoints at `https://upgrades.ontour.vip/api/stripe/webhook`:
    - Events on your account: `checkout.session.completed`. Put its signing secret in `STRIPE_WEBHOOK_SECRET`.
    - Events on your account, payload style Thin: `v2.core.account.updated`, `v2.core.account[requirements].updated`, `v2.core.account[configuration.merchant].capability_status_updated`. Put its signing secret in `STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET`.
+   - Events on connected accounts, payload style Snapshot: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.expired` (fan checkout). Put its signing secret in `STRIPE_CONNECT_WEBHOOK_SECRET`.
 4. P&T admin, then Stripe, shows a checklist of what's connected.
 
 Artists set up payouts and a card on file from Payments in their sidebar.
