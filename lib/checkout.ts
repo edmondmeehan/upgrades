@@ -9,7 +9,7 @@ export type OrderView = {
   artist: { name: string; handle: string };
   show: { slug: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; timezone: string; doors_time: string | null; show_time: string | null };
   product: { name: string; includes_photo: boolean; included: string[] };
-  order: { id: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
+  order: { id: string; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
   passes: { code: string }[];
 };
 
@@ -26,7 +26,7 @@ export async function loadOrder(holdId: string): Promise<OrderView | null> {
   ]);
   let order = null, passes: { code: string }[] = [];
   if (hold.order_id) {
-    const { data: o } = await db.from("orders").select("id, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
+    const { data: o } = await db.from("orders").select("id, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
     order = o as OrderView["order"];
     const { data: items } = await db.from("order_items").select("id").eq("order_id", hold.order_id);
     const { data: ps } = await db.from("passes").select("code").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
@@ -61,6 +61,7 @@ export async function fulfillSession(session: Stripe.Checkout.Session, accountId
     p_hold: holdId, p_email: session.customer_details?.email ?? session.customer_email ?? "unknown@example.com",
     p_name: session.customer_details?.name ?? null, p_payment_intent: pi.id, p_charge: charge?.id ?? null,
     p_application_fee: appFee, p_stripe_fee: stripeFee, p_total: session.amount_total ?? null,
+    p_postal: session.customer_details?.address?.postal_code ?? null,
   });
   if (error) throw error;
   await sendConfirmation(holdId).catch((e) => console.error("[checkout] confirmation email", e));
@@ -74,12 +75,13 @@ async function sendConfirmation(holdId: string) {
   const city = `${v.show.city ?? ""}${v.show.region ? `, ${v.show.region}` : ""}`;
   await sendEmail({
     to: v.order.fans.email,
-    subject: `You're going VIP: ${v.artist.name} in ${v.show.city}`,
+    subject: `You're going VIP: ${v.artist.name} in ${v.show.city} (${v.order.confirmation_code})`,
     eyebrow: "Order confirmed",
     title: `You're going VIP, ${v.order.fans.name?.split(" ")[0] ?? "friend"}`,
     preheader: `${v.product.name} for ${v.artist.name}, ${date}`,
     body: [`Thanks for your order. Here's what you've got for ${v.artist.name} in ${city}.`],
     details: [
+      ["Confirmation number", v.order.confirmation_code],
       ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`],
       ["Show", `${date}, ${city}`],
       ["Venue", v.show.venue_name ?? "TBA"],
@@ -88,6 +90,6 @@ async function sendConfirmation(holdId: string) {
     ],
     images: v.passes.map((p, i) => ({ src: `${siteUrl()}/qr/${p.code}.png`, alt: `QR code for pass ${p.code}`, caption: v.passes.length > 1 ? `${p.code}  (guest ${i + 1})` : p.code })),
     button: { label: "View your passes", url: `${siteUrl()}/order/${holdId}` },
-    footnote: "Show the QR code at VIP check-in. You can also save each pass as an image from your order page. Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.",
+    footnote: "Lost this email? Find your order any time at upgrades.ontour.vip/find-order with your confirmation number and last name. Show the QR code at VIP check-in. You can also save each pass as an image from your order page. Check-in details, including where and when to arrive, will be emailed a few days before the show. This is a VIP upgrade; your concert ticket is separate.",
   });
 }

@@ -49,7 +49,11 @@ export default async function Order({ params, searchParams }: P) {
             <div className="card grid gap-4 p-6">
               <span className="badge b-published justify-self-start">Order confirmed</span>
               <h1 className="text-[28px]">You&apos;re going VIP{v.order.fans?.name ? `, ${v.order.fans.name.split(" ")[0]}` : ""}</h1>
-              <p className="muted">A confirmation is on its way to {v.order.fans?.email}. Keep this page; it&apos;s your record of the order.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-edge px-4 py-3">
+                <span className="th">Confirmation number</span>
+                <span className="font-mono text-[20px] font-extrabold tracking-[0.08em]">{v.order.confirmation_code}</span>
+              </div>
+              <p className="muted">A confirmation is on its way to {v.order.fans?.email}. You can come back to this order any time at <Link href="/find-order">upgrades.ontour.vip/find-order</Link> with your confirmation number and last name.</p>
               <dl className="grid gap-2 rounded-2xl bg-paper p-4 text-[15px]">
                 {[["Artist", v.artist.name], ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`], ["Show", date], ["Where", `${v.show.venue_name ?? "Venue TBA"}, ${city}`],
                   ...(v.show.doors_time ? [["Doors", formatTime(v.show.doors_time)!]] : []), ["Total paid", dollars(v.order.total_cents)]].map(([k, val]) => (

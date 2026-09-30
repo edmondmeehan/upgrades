@@ -41,6 +41,7 @@ export async function startCheckout(fd: FormData) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: line,
+      billing_address_collection: "auto", // collects the billing ZIP fans can use to look up their order
       client_reference_id: h.hold_id,
       metadata: { hold_id: h.hold_id, show_product_id: sp },
       payment_intent_data: {

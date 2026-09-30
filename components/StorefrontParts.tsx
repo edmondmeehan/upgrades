@@ -24,8 +24,12 @@ export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compa
       <div className="home-wrap relative pb-9">
         <div className="home-top-bar">
           <Logo href={`/${s.handle}`} label={`${s.name} upgrades`} chip={t.fg === "#0b0b0f"} />
-          <a href="https://help.please.co" className="inline-flex h-[38px] items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold !no-underline"
-            style={{ background: t.accent, color: t.accentFg }}><Icon name="help" size={16} />Fan Support</a>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Link href="/find-order" className="inline-flex h-[38px] items-center rounded-full px-3.5 text-[14px] font-bold !no-underline"
+              style={{ color: t.fg, boxShadow: `inset 0 0 0 1.5px ${t.fg === "#ffffff" ? "rgba(255,255,255,.5)" : "rgba(0,0,0,.25)"}` }}>Find my order</Link>
+            <a href="https://help.please.co" className="inline-flex h-[38px] items-center gap-1.5 rounded-full px-3.5 text-[14px] font-bold !no-underline"
+              style={{ background: t.accent, color: t.accentFg }}><Icon name="help" size={16} />Fan Support</a>
+          </div>
         </div>
         <div className={`flex flex-wrap items-end gap-5 ${compact ? "mt-8" : "mt-10 md:mt-16"}`}>
           {s.avatar_url && (
