@@ -58,6 +58,13 @@ P&T's Stripe account is the platform. Artists get Accounts v2 connected accounts
 
 Artists set up payouts and a card on file from Payments in their sidebar.
 
+### 6. Email (Resend, same as photos.ontour.vip)
+App emails (invites, verification, approvals) and Supabase sign-in emails go through Resend from `upgrades@ontour.vip`, using the same branded layout as the photos app.
+1. Resend: create an API key (Sending access). ontour.vip is already verified for the photos app, so any @ontour.vip sender works.
+2. Vercel: add `RESEND_API_KEY`. `EMAIL_FROM` is `Please & Thank You <upgrades@ontour.vip>`.
+3. Supabase, then Authentication, then Emails, then SMTP Settings: enable custom SMTP with host `smtp.resend.com`, port `465`, username `resend`, password = the Resend API key, sender `upgrades@ontour.vip`, name `Please & Thank You`.
+4. Supabase, then Authentication, then Emails, then Templates: paste each file from `supabase/email-templates/` into the matching template, with the subject from `SUBJECTS.txt`.
+
 ### Local development
 ```bash
 cp .env.example .env.local   # fill in Supabase values

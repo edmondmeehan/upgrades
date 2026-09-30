@@ -20,16 +20,22 @@ export async function reviewArtist(artistId: string, fd: FormData) {
     .select("profiles!artist_members_user_id_fkey(email), artists(name)").eq("artist_id", artistId).eq("role", "owner")
     .returns<{ profiles: { email: string }; artists: { name: string } }[]>();
   const link = `${siteUrl()}/a/${artistId}`;
-  const mail: Record<string, [string, string] | undefined> = {
-    approve: ["is verified on OnTour Upgrades", "You're approved. Your storefront is live and your published shows are listed there. Upgrades and payouts are coming next."],
-    reject: ["needs a few changes", `P&T reviewed your verification and needs a few changes before approving:\n\n${notes}\n\nUpdate and resubmit here:`],
-    suspend: ["storefront is offline", `Your storefront has been taken offline.${notes ? `\n\n${notes}` : ""}\n\nReply through help.please.co to sort it out.`],
-    reinstate: ["storefront is back online", "Your account has been reinstated and your storefront is live again."],
+  const name = owners?.[0]?.artists.name ?? "Your artist";
+  const mail: Record<string, Parameters<typeof sendEmail>[0] | undefined> = {
+    approve: { to: "", subject: `${name} is verified on OnTour Upgrades`, eyebrow: "Verified", title: "You're approved",
+      body: [`${name} is verified. Your storefront is live, and every show you publish is listed there.`, "Next, set up payouts with Stripe and add your VIP packages so fans can start buying."],
+      button: { label: "Open your dashboard", url: link } },
+    reject: { to: "", subject: `${name} needs a few changes`, eyebrow: "Verification", title: "A few changes needed",
+      body: ["P&T reviewed your verification and needs a few changes before approving:", notes, "Update your details and resubmit when you're ready."],
+      button: { label: "Update and resubmit", url: `${link}/verification` } },
+    suspend: { to: "", subject: `${name} storefront is offline`, eyebrow: "Account", title: "Your storefront is offline",
+      body: ["P&T has taken your storefront offline.", ...(notes ? [notes] : []), "Reply through help.please.co and we'll sort it out."],
+      button: { label: "Contact support", url: "https://help.please.co" } },
+    reinstate: { to: "", subject: `${name} storefront is back online`, eyebrow: "Account", title: "You're back online",
+      body: ["Your account has been reinstated and your storefront is live again."], button: { label: "Open your dashboard", url: link } },
   };
   const m = mail[decision];
-  for (const o of owners ?? []) {
-    if (m) await sendEmail({ to: o.profiles.email, subject: `${o.artists.name} ${m[0]}`, text: `${m[1]}\n\n${link}` });
-  }
+  if (m) for (const o of owners ?? []) await sendEmail({ ...m, to: o.profiles.email });
   revalidatePath("/admin");
   const done = { approve: "Approved. The artist has been emailed.", reject: "Changes requested. The artist has been emailed.", suspend: "Suspended.", reinstate: "Reinstated." }[decision] ?? "Saved.";
   redirect(withMsg(back, "ok", done));
@@ -77,7 +83,11 @@ export async function inviteAdmin(fd: FormData) {
   const { sent } = await sendEmail({
     to: email,
     subject: "You've been invited to OnTour Upgrades admin",
-    text: `${profile.name ?? profile.email} invited you to be a P&T admin on OnTour Upgrades. Admins approve artists, set fees, and see platform finance.\n\nAccept the invite (link works for 7 days):\n${siteUrl()}/admin-invite/${token}`,
+    eyebrow: "Staff invitation",
+    title: "Join the P&T admin team",
+    body: [`${profile.name ?? profile.email} invited you to be a P&T admin on OnTour Upgrades. Admins approve artists, set fees, and see platform finance.`],
+    button: { label: "Accept invitation", url: `${siteUrl()}/admin-invite/${token}` },
+    footnote: "This link works for 7 days. If you weren't expecting it, you can ignore this email.",
   });
   redirect(withMsg("/admin/team", "ok", sent ? `Invite sent to ${email}.` : `Invite created for ${email}. Email isn't connected yet, so copy the link below and send it yourself.`));
 }

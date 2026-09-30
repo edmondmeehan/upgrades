@@ -174,7 +174,11 @@ export async function submitVerification(artistId: string, fd: FormData) {
     await sendEmail({
       to: str(fd, "third_party_email"),
       subject: `Please confirm ${artist.name} on OnTour Upgrades`,
-      text: `Hi ${str(fd, "third_party_name")},\n\n${profile.name ?? profile.email} (${profile.email}) is setting up VIP upgrades for ${artist.name} on OnTour Upgrades by Please & Thank You, and listed you as their ${str(fd, "third_party_relation") || "contact"}.\n\nIf this is really ${artist.name}'s team, confirm it here:\n${siteUrl()}/confirm/${token}\n\nIf you don't recognize this, ignore this email and nothing will go live.`,
+      eyebrow: "Artist verification",
+      title: `Is this ${artist.name}'s team?`,
+      body: [`Hi ${str(fd, "third_party_name")},`, `${profile.name ?? profile.email} (${profile.email}) is setting up VIP upgrades for ${artist.name} on OnTour Upgrades by Please & Thank You, and listed you as their ${str(fd, "third_party_relation") || "contact"}.`, `Confirm only if they're authorized to sell VIP upgrades for ${artist.name}.`],
+      button: { label: `Yes, confirm ${artist.name}`, url: `${siteUrl()}/confirm/${token}` },
+      footnote: "If you don't recognize this, ignore this email and nothing will go live.",
     });
   }
   const admin = process.env.ADMIN_NOTIFY_EMAIL;
@@ -182,7 +186,11 @@ export async function submitVerification(artistId: string, fd: FormData) {
     await sendEmail({
       to: admin,
       subject: `New artist to review: ${artist.name}`,
-      text: `${artist.name} (/${artist.handle}) submitted verification by ${method.replace("_", " ")}.\n\nReview: ${siteUrl()}/admin/artists/${artistId}`,
+      eyebrow: "P&T admin",
+      title: `${artist.name} is ready for review`,
+      body: [`${artist.name} submitted verification.`],
+      details: [["Storefront", `upgrades.ontour.vip/${artist.handle}`], ["Proof", { code_post: "Posted or DM'd a code", domain_email: "Domain email", third_party: "Manager, agent, or label confirmation" }[method] ?? method], ["Submitted by", profile.email]],
+      button: { label: "Review artist", url: `${siteUrl()}/admin/artists/${artistId}` },
     });
   }
   done(back, null, "Submitted. P&T will review it and email you when you're approved.");
@@ -202,7 +210,11 @@ export async function inviteMember(artistId: string, fd: FormData) {
   const { sent } = await sendEmail({
     to: email,
     subject: `${artist.name} invited you to OnTour Upgrades`,
-    text: `${profile.name ?? profile.email} added you to ${artist.name} on OnTour Upgrades as ${ROLE_LABEL[role].toLowerCase()}, with ${scope}.\n\nAccept the invite (link works for 14 days):\n${link}`,
+    eyebrow: "Team invitation",
+    title: `Join ${artist.name} on OnTour Upgrades`,
+    body: [`${profile.name ?? profile.email} added you to ${artist.name} as ${ROLE_LABEL[role].toLowerCase()}, with ${scope}.`],
+    button: { label: "Accept invitation", url: link },
+    footnote: "This link works for 14 days. Sign in or create an account with this email address to accept.",
   });
   done(`/a/${artistId}/team`, null, sent ? `Invite sent to ${email}.` : `Invite created for ${email}. Email isn't set up yet, so copy the link below and send it yourself.`);
 }

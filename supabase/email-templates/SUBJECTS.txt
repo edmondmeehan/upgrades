@@ -1,0 +1,6 @@
+confirm-signup: Confirm your OnTour Upgrades account
+magic-link: Your OnTour Upgrades sign-in link
+reset-password: Reset your OnTour Upgrades password
+change-email: Confirm your new email address
+invite: You've been invited to OnTour Upgrades
+reauthentication: Your OnTour Upgrades verification code
