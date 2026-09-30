@@ -115,3 +115,17 @@ export async function sendTestEmail() {
     ? `Test email sent to ${profile.email}. If it isn't in your inbox within a minute, check spam, then Resend's Emails page.`
     : `Test email failed. ${error ?? ""}`));
 }
+
+/** Sends yesterday's daily sales email to the signed-in admin only (for checking it looks right). */
+export async function sendMeDailyReport() {
+  const { profile } = await requireSuperAdmin();
+  const { sendDailyReport, yesterdayNY } = await import("@/lib/dailyReport");
+  const r = await sendDailyReport(yesterdayNY(), { onlyTo: profile.email });
+  redirect(withMsg("/admin/team", r.sent ? "ok" : "err", r.sent ? `Yesterday's report sent to ${profile.email}.` : `The report didn't send (${"skipped" in r ? r.skipped : "email error"}).`));
+}
+
+export async function setMyDailyReport(on: boolean) {
+  const { supabase, profile } = await requireSuperAdmin();
+  await supabase.from("profiles").update({ daily_report: on }).eq("id", profile.id);
+  redirect(withMsg("/admin/team", "ok", on ? "You'll get the daily sales email every morning." : "Daily sales email turned off for you."));
+}

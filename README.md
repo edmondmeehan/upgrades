@@ -66,6 +66,10 @@ App emails (invites, verification, approvals) and Supabase sign-in emails go thr
 3. Supabase, then Authentication, then Emails, then SMTP Settings: enable custom SMTP with host `smtp.resend.com`, port `465`, username `resend`, password = the Resend API key, sender `upgrades@ontour.vip`, name `Please & Thank You`.
 4. Supabase, then Authentication, then Emails, then Templates: paste each file from `supabase/email-templates/` into the matching template, with the subject from `SUBJECTS.txt`.
 
+### 7. Daily sales email
+Vercel Cron calls `/api/cron/daily-sales` at 12:00 UTC (8 AM Eastern in summer, 7 AM in winter) and emails yesterday's sales to every P&T admin with it switched on.
+Add `CRON_SECRET` in Vercel (any long random string); Vercel sends it with each cron call. Admins can turn it off or send a preview under P&T admin, then Admins.
+
 ### Local development
 ```bash
 cp .env.example .env.local   # fill in Supabase values

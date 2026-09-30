@@ -2,7 +2,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash, type Msg } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { inviteAdmin, revokeAdminInvite, removeAdmin, sendTestEmail } from "../actions";
+import { inviteAdmin, revokeAdminInvite, removeAdmin, sendTestEmail, sendMeDailyReport, setMyDailyReport } from "../actions";
 import { emailConfigured } from "@/lib/email";
 import { siteUrl } from "@/lib/email";
 import { formatDateTime } from "@/lib/util";
@@ -11,6 +11,7 @@ export const metadata = { title: "Admins" };
 
 export default async function AdminTeam({ searchParams }: { searchParams: Msg }) {
   const { supabase, user } = await requireSuperAdmin();
+  const { data: me } = await supabase.from("profiles").select("daily_report").eq("id", user.id).single<{ daily_report: boolean }>();
   const { ok, err } = await searchParams;
   const [{ data: admins }, { data: invites }] = await Promise.all([
     supabase.from("profiles").select("id, name, email, created_at").eq("is_super_admin", true).order("created_at")
@@ -76,6 +77,15 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
           <p className="help">{emailConfigured() ? "Resend is connected. Send yourself a test to check delivery." : "RESEND_API_KEY isn't set in Vercel, so emails aren't sending."}</p>
           <div><SubmitButton variant="ghost" pendingText="Sending…">Send test email</SubmitButton></div>
         </form>
+        <section className="panel grid gap-3 lg:col-start-2">
+          <h2>Daily sales email</h2>
+          <p className="help">Every morning around 8 AM Eastern, each admin gets the previous day&apos;s sales, fees, top artists and packages, and anything waiting on P&amp;T.{process.env.CRON_SECRET ? "" : " It won't send automatically until CRON_SECRET is set in Vercel."}</p>
+          <p className="text-[14px]">For you: <strong>{me?.daily_report === false ? "Off" : "On"}</strong></p>
+          <div className="flex flex-wrap gap-2">
+            <form action={setMyDailyReport.bind(null, me?.daily_report === false)}><SubmitButton variant="ghost" size="sm">{me?.daily_report === false ? "Turn on" : "Turn off"}</SubmitButton></form>
+            <form action={sendMeDailyReport}><SubmitButton variant="ghost" size="sm" pendingText="Sending…">Send me yesterday&apos;s now</SubmitButton></form>
+          </div>
+        </section>
       </div>
     </>
   );

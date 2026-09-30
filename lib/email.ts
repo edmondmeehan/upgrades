@@ -17,6 +17,8 @@ export type EmailContent = {
   details?: [string, string][]; // label/value rows in a grey box
   footnote?: string;          // small print under the button
   images?: { src: string; alt: string; caption?: string }[]; // e.g. pass QR codes
+  tables?: { title?: string; head: string[]; rows: string[][]; numeric?: number[] }[]; // simple data tables (reports)
+  stats?: { label: string; value: string; note?: string }[]; // big-number tiles
   preheader?: string;         // inbox preview text
 };
 
@@ -45,6 +47,16 @@ export function renderEmail(c: EmailContent) {
 ${c.eyebrow ? `<p style="margin:0 0 8px;font:700 12px/1.2 ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#5A5866">${esc(c.eyebrow)}</p>` : ""}
 <h1 style="margin:0 0 16px;font:800 26px/1.15 ${FONT};letter-spacing:-.02em;color:#0B0B0F">${esc(c.title)}</h1>
 ${c.body.map(p).join("\n")}
+${c.stats?.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>${c.stats.map((st) =>
+  `<td valign="top" style="width:${Math.floor(100 / c.stats!.length)}%;padding:0 4px"><div style="background:#F7F6FA;border-radius:14px;padding:14px 12px">
+<p style="margin:0;font:800 22px/1.1 ${FONT};color:#0B0B0F">${esc(st.value)}</p>
+<p style="margin:4px 0 0;font:700 11px/1.3 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:#5A5866">${esc(st.label)}</p>
+${st.note ? `<p style="margin:4px 0 0;font:400 12px/1.3 ${FONT};color:#5A5866">${esc(st.note)}</p>` : ""}</div></td>`).join("")}</tr></table>` : ""}
+${(c.tables ?? []).map((tb) => `${tb.title ? `<p style="margin:8px 0 8px;font:800 15px/1.3 ${FONT};color:#0B0B0F">${esc(tb.title)}</p>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse;font:400 13px/1.4 ${FONT};color:#3F3D4A">
+<tr>${tb.head.map((h, i) => `<th align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:6px 8px;border-bottom:1.5px solid #E7E5EE;font:700 11px/1.2 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:#5A5866">${esc(h)}</th>`).join("")}</tr>
+${tb.rows.map((r) => `<tr>${r.map((v, i) => `<td align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:7px 8px;border-bottom:1px solid #F0EEF5">${esc(v)}</td>`).join("")}</tr>`).join("")}
+</table>`).join("\n")}
 ${details}
 ${(c.images ?? []).map((im) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td align="center" style="background:#130056;border-radius:16px;padding:16px">
 <table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#ffffff;border-radius:12px;padding:14px">
@@ -62,6 +74,8 @@ Please &amp; Thank You, Inc., 1909 H Street, Sacramento, CA 95811
 
   const text = [
     c.title, "", ...c.body.flatMap((b) => [b, ""]),
+    ...(c.stats ?? []).map((st) => `${st.label}: ${st.value}${st.note ? ` (${st.note})` : ""}`), ...(c.stats?.length ? [""] : []),
+    ...(c.tables ?? []).flatMap((tb) => [...(tb.title ? [tb.title] : []), tb.head.join(" | "), ...tb.rows.map((r) => r.join(" | ")), ""]),
     ...(c.details ?? []).map(([k, v]) => `${k}: ${v}`), ...(c.details?.length ? [""] : []),
     ...(c.button ? [`${c.button.label}: ${c.button.url}`, ""] : []),
     ...(c.footnote ? [c.footnote, ""] : []),
