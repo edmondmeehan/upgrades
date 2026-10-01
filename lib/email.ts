@@ -113,6 +113,7 @@ export async function sendEmail({ to, subject, replyTo, ...content }: EmailConte
     }
     const { id } = (await res.json().catch(() => ({}))) as { id?: string };
     console.log(`[email] sent "${subject}" to ${to}${id ? ` (Resend id ${id})` : ""}`);
+    import("@/lib/health").then((m) => m.markOk("email")).catch(() => null);
     return { sent: true };
   } catch (e) {
     console.error("[email] send failed", e);
@@ -137,9 +138,16 @@ export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: numb
       const res = await fetch("https://api.resend.com/emails/batch", {
         method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body: JSON.stringify(chunk),
       });
-      if (res.ok) sent += chunk.length;
-      else { error = `Resend ${res.status}: ${(await res.text()).slice(0, 200)}`; console.error("[email batch]", error); }
-    } catch (e) { error = "network"; console.error("[email batch]", e); }
+      if (res.ok) {
+        sent += chunk.length;
+        const j = (await res.json().catch(() => ({}))) as { data?: { id: string }[] };
+        console.log(`[email] batch sent ${chunk.length}: "${chunk[0]?.subject}"${j.data?.length ? ` (Resend ids ${j.data.map((d) => d.id).join(", ")})` : ""}`);
+      } else {
+        error = `Resend ${res.status}: ${(await res.text()).slice(0, 200)}`;
+        console.error("[email batch]", error);
+        import("@/lib/health").then((m) => m.markError("email", error)).catch(() => null);
+      }
+    } catch (e) { error = "network"; console.error("[email batch]", e); import("@/lib/health").then((m) => m.markError("email", e)).catch(() => null); }
   }
   return { sent, error };
 }
