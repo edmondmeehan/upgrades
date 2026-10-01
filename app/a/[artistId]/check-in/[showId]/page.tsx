@@ -10,7 +10,7 @@ export const metadata = { title: "Check-in" };
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ artistId: string; showId: string }> };
 
-type Row = { id: string; code: string; checked_in_at: string | null; voided_at: string | null;
+type Row = { id: string; code: string; checked_in_at: string | null; voided_at: string | null; attendee_name: string | null;
   order_items: { id: string; quantity: number; show_products: { products: { name: string } } | null; orders: { status: string; fans: { name: string | null; email: string } | null } | null } | null };
 
 export default async function CheckIn({ params }: P) {
@@ -19,7 +19,7 @@ export default async function CheckIn({ params }: P) {
   const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name").eq("id", showId).eq("artist_id", artistId).maybeSingle();
   if (!show) notFound();
   const { data } = await supabase.from("passes")
-    .select("id, code, checked_in_at, voided_at, order_items(id, quantity, show_products(products(name)), orders(status, fans(name, email)))")
+    .select("id, code, checked_in_at, voided_at, attendee_name, order_items(id, quantity, show_products(products(name)), orders(status, fans(name, email)))")
     .eq("show_id", showId).order("code").returns<Row[]>();
 
   const byItem = new Map<string, number>();
@@ -27,7 +27,7 @@ export default async function CheckIn({ params }: P) {
     const n = (byItem.get(r.order_items?.id ?? "") ?? 0) + 1;
     byItem.set(r.order_items?.id ?? "", n);
     const fan = r.order_items?.orders?.fans;
-    return { pass_id: r.id, code: r.code, name: fan?.name ?? null, email: fan?.email ?? null, pkg: r.order_items?.show_products?.products.name ?? "VIP",
+    return { pass_id: r.id, code: r.code, name: r.attendee_name ? `${r.attendee_name} (via ${fan?.name ?? fan?.email ?? "buyer"})` : fan?.name ?? null, email: fan?.email ?? null, pkg: r.order_items?.show_products?.products.name ?? "VIP",
       guest: n, of: r.order_items?.quantity ?? 1, checked_in_at: r.checked_in_at, void: !!r.voided_at || r.order_items?.orders?.status === "refunded" };
   }).sort((a, b) => (a.name ?? a.email ?? "").localeCompare(b.name ?? b.email ?? ""));
 

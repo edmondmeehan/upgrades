@@ -7,15 +7,17 @@ import { fulfillSession, loadOrder } from "@/lib/checkout";
 import { dollars } from "@/lib/packages";
 import { qrSvg } from "@/lib/qr";
 import { checkinNotes, checkinRows, hasCheckinDetails, mapsUrl } from "@/lib/checkinEmail";
+import { fanSetGuest, fanResend } from "./actions";
+import { SubmitButton } from "@/components/SubmitButton";
 
 export const metadata = { title: "Your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
-type P = { params: Promise<{ holdId: string }>; searchParams: Promise<{ session_id?: string }> };
+type P = { params: Promise<{ holdId: string }>; searchParams: Promise<{ session_id?: string; msg?: string }> };
 
 export default async function Order({ params, searchParams }: P) {
   const { holdId } = await params;
-  const { session_id } = await searchParams;
+  const { session_id, msg } = await searchParams;
   let v = await loadOrder(holdId);
   if (!v) notFound();
 
@@ -44,6 +46,7 @@ export default async function Order({ params, searchParams }: P) {
         </div>
       </header>
       <main className="mx-auto grid max-w-[560px] gap-5 px-4 py-8">
+        {msg && <p role="status" className="alert alert-green">{msg.slice(0, 200)}</p>}
         {v.order ? (
           <>
             <div className="card grid gap-4 p-6">
@@ -58,7 +61,7 @@ export default async function Order({ params, searchParams }: P) {
                   <span className="btn btn-yellow btn-sm">View photos</span>
                 </a>
               )}
-              <h1 className="text-[28px]">You&apos;re going VIP{v.order.fans?.name ? `, ${v.order.fans.name.split(" ")[0]}` : ""}</h1>
+              <h1 className="text-[28px]">{v.order.is_comp ? "You're on the VIP list" : "You're going VIP"}{v.order.fans?.name ? `, ${v.order.fans.name.split(" ")[0]}` : ""}</h1>
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-dashed border-edge px-4 py-3">
                 <span className="th">Confirmation number</span>
                 <span className="font-mono text-[20px] font-extrabold tracking-[0.08em]">{v.order.confirmation_code}</span>
@@ -66,7 +69,7 @@ export default async function Order({ params, searchParams }: P) {
               <p className="muted">A confirmation is on its way to {v.order.fans?.email}. You can come back to this order any time at <Link href="/find-order">upgrades.ontour.vip/find-order</Link> with your confirmation number and last name.</p>
               <dl className="grid gap-2 rounded-2xl bg-paper p-4 text-[15px]">
                 {[["Artist", v.artist.name], ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`], ["Show", date], ["Where", `${v.show.venue_name ?? "Venue TBA"}, ${city}`],
-                  ["Total paid", dollars(v.order.total_cents)]].map(([k, val]) => (
+                  [v.order.is_comp ? "Price" : "Total paid", v.order.is_comp ? "Complimentary" : dollars(v.order.total_cents)]].map(([k, val]) => (
                   <div key={k} className="grid grid-cols-[96px_1fr] gap-3"><dt className="th pt-0.5">{k}</dt><dd className="font-semibold">{val}</dd></div>
                 ))}
               </dl>
@@ -97,7 +100,7 @@ export default async function Order({ params, searchParams }: P) {
                 {v.passes.map((p, i) => (
                   <li key={p.code} className="overflow-hidden rounded-[20px] bg-navy text-white">
                     <div className="flex items-center justify-between px-5 pt-4">
-                      <span className="text-[13px] font-semibold text-[#b7b1cc]">{v.passes.length > 1 ? `Guest ${i + 1} of ${v.passes.length}` : "VIP pass"}</span>
+                      <span className="text-[13px] font-semibold text-[#b7b1cc]">{p.attendee_name ?? (v.passes.length > 1 ? `Guest ${i + 1} of ${v.passes.length}` : "VIP pass")}</span>
                       <span className="text-[13px] font-bold text-yellow">{v.product.name}</span>
                     </div>
                     <div className="m-4 grid justify-items-center gap-2 rounded-2xl bg-white p-5 text-ink">
@@ -111,11 +114,35 @@ export default async function Order({ params, searchParams }: P) {
                 ))}
               </ul>
               <p className="help">Tip: on iPhone, open the saved pass and add it to your Photos favorites so it&apos;s one tap away at the door. Brighten your screen when you scan.</p>
+              {v.passes.length > 0 && v.show.show_date >= new Date().toISOString().slice(0, 10) && (
+                <details id="guests" className="rounded-2xl bg-paper p-4" open={v.passes.length > 1 && v.passes.some((p) => !p.attendee_name)}>
+                  <summary className="cursor-pointer font-bold">{v.passes.length > 1 ? "Who's coming? Add your guests" : "Going yourself? Or send this pass to someone"}</summary>
+                  <div className="mt-3 grid gap-3">
+                    {v.passes.map((p, i) => (
+                      <form key={p.id} action={fanSetGuest.bind(null, holdId, p.id)} className="grid gap-2 rounded-xl bg-white p-3">
+                        <p className="text-[13px] font-bold">{v.passes.length > 1 ? `Guest ${i + 1}` : "Pass"} <span className="font-mono font-medium text-mute">{p.code}</span>{p.checked_in_at && <span className="ml-2 text-ok">checked in</span>}</p>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <input name="name" defaultValue={p.attendee_name ?? ""} maxLength={120} className="input input-sm" placeholder="Guest's full name" aria-label={`Name for guest ${i + 1}`} disabled={!!p.checked_in_at} />
+                          <input name="email" type="email" defaultValue={p.attendee_email ?? ""} className="input input-sm" placeholder="Their email (optional)" aria-label={`Email for guest ${i + 1}`} disabled={!!p.checked_in_at} />
+                        </div>
+                        {!p.checked_in_at && (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" name="send" className="check !size-4" />Email this pass to them</label>
+                            <SubmitButton size="sm" variant="ghost">Save</SubmitButton>
+                          </div>
+                        )}
+                      </form>
+                    ))}
+                    <p className="help">Guest names help the team check everyone in. Emailing a pass sends just that one QR code to your guest, so you don&apos;t have to arrive together.</p>
+                  </div>
+                </details>
+              )}
               <p className="help">This is a VIP upgrade. Your concert ticket is separate.{v.product.includes_photo ? " Your meet & greet photos will be emailed after the show." : ""}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link href={`/${v.artist.handle}`} className="btn btn-ghost">Back to {v.artist.name}</Link>
               <Link href={`/${v.artist.handle}/support?order=${v.order.confirmation_code}`} className="btn btn-ghost">Questions? Contact {v.artist.name}</Link>
+              <form action={fanResend.bind(null, holdId)}><SubmitButton variant="ghost" pendingText="Sending…">Email me this order again</SubmitButton></form>
             </div>
           </>
         ) : pending ? (

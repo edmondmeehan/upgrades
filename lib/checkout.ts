@@ -11,8 +11,8 @@ export type OrderView = {
   show: CheckinShow & { slug: string };
   product: { name: string; includes_photo: boolean; included: string[] };
   pkgCheckin: { time: string | null; notes: string | null };
-  order: { id: string; status: string; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
-  passes: { code: string }[];
+  order: { id: string; status: string; is_comp: boolean; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
+  passes: { id: string; code: string; attendee_name: string | null; attendee_email: string | null; checked_in_at: string | null }[];
   photos: { url: string } | null; // gallery link, once the artist has sent photos
 };
 
@@ -27,12 +27,12 @@ export async function loadOrder(holdId: string): Promise<OrderView | null> {
     db.from("shows").select(`slug, ${SHOW_CHECKIN_COLUMNS}`).eq("id", hold.show_id).single(),
     db.from("show_products").select("checkin_time, checkin_notes, products(name, includes_photo, included)").eq("id", hold.show_product_id).single(),
   ]);
-  let order = null, passes: { code: string }[] = [];
+  let order = null, passes: OrderView["passes"] = [];
   if (hold.order_id) {
-    const { data: o } = await db.from("orders").select("id, status, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
+    const { data: o } = await db.from("orders").select("id, status, is_comp, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
     order = o as OrderView["order"];
     const { data: items } = await db.from("order_items").select("id").eq("order_id", hold.order_id);
-    const { data: ps } = await db.from("passes").select("code").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
+    const { data: ps } = await db.from("passes").select("id, code, attendee_name, attendee_email, checked_in_at").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
     passes = ps ?? [];
   }
   let photos: OrderView["photos"] = null;
@@ -77,6 +77,9 @@ export async function fulfillSession(session: Stripe.Checkout.Session, accountId
   return orderId as string;
 }
 
+/** The order confirmation email (also used to resend it, and for comp passes). */
+export async function sendOrderConfirmation(holdId: string) { return sendConfirmation(holdId); }
+
 async function sendConfirmation(holdId: string) {
   const v = await loadOrder(holdId);
   if (!v?.order?.fans?.email) return;
@@ -90,18 +93,18 @@ async function sendConfirmation(holdId: string) {
   await sendEmail({
     to: v.order.fans.email,
     replyTo: sup?.support_email ?? undefined,
-    subject: `You're going VIP: ${v.artist.name} in ${v.show.city} (${v.order.confirmation_code})`,
-    eyebrow: "Order confirmed",
-    title: `You're going VIP, ${v.order.fans.name?.split(" ")[0] ?? "friend"}`,
+    subject: v.order.is_comp ? `You're on the VIP list: ${v.artist.name} in ${v.show.city}` : `You're going VIP: ${v.artist.name} in ${v.show.city} (${v.order.confirmation_code})`,
+    eyebrow: v.order.is_comp ? "Guest list" : "Order confirmed",
+    title: `${v.order.is_comp ? "You're on the VIP list" : "You're going VIP"}, ${v.order.fans.name?.split(" ")[0] ?? "friend"}`,
     preheader: `${v.product.name} for ${v.artist.name}, ${date}`,
-    body: [`Thanks for your order. Here's what you've got for ${v.artist.name} in ${city}.`,
+    body: [v.order.is_comp ? `The ${v.artist.name} team added you to the VIP list for ${city}. No payment needed.` : `Thanks for your order. Here's what you've got for ${v.artist.name} in ${city}.`,
       ...(late ? ["Check-in details for the show are below.", ...checkinNotes(v.show, pkg)] : [])],
     details: [
       ["Confirmation number", v.order.confirmation_code],
       ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`],
       ["Show", `${date}, ${city}`],
       ["Venue", v.show.venue_name ?? "TBA"],
-      ["Total paid", dollars(v.order.total_cents)],
+      ...(v.order.is_comp ? [] : [["Total paid", dollars(v.order.total_cents)] as [string, string]]),
       [v.passes.length > 1 ? "Pass codes" : "Pass code", v.passes.map((p) => p.code).join(", ")],
       ...(late ? [...checkinRows(v.show, pkg).filter(([k]) => k !== "Date" && k !== "Venue"), ["Directions", mapsUrl(v.show)] as [string, string]] : []),
     ],
@@ -111,4 +114,27 @@ async function sendConfirmation(holdId: string) {
   });
   if (late && db) await db.from("checkin_emails").insert({ show_id: v.hold.show_id, order_id: v.order.id, kind: "details" });
 
+}
+
+/** Emails one pass to the guest named on it (from the fan's order page or the artist). */
+export async function sendPassToGuest(holdId: string, passId: string) {
+  const v = await loadOrder(holdId);
+  const p = v?.passes.find((x) => x.id === passId);
+  if (!v?.order || !p?.attendee_email) return { sent: false, error: "Add the guest's email first." };
+  const db = createAdminClient();
+  const { data: sup } = db ? await db.from("artists").select("support_email").eq("handle", v.artist.handle).single<{ support_email: string | null }>() : { data: null };
+  const date = new Date(`${v.show.show_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+  const from = v.order.fans?.name ?? v.order.fans?.email ?? "A friend";
+  const r = await sendEmail({
+    to: p.attendee_email, replyTo: sup?.support_email ?? undefined,
+    subject: `${from.split(" ")[0]} sent you a VIP pass for ${v.artist.name}`,
+    eyebrow: "Your VIP pass", title: `You're going VIP${p.attendee_name ? `, ${p.attendee_name.split(" ")[0]}` : ""}`,
+    body: [`${from} sent you a pass for ${v.product.name} with ${v.artist.name} in ${v.show.city ?? ""} on ${date}.`, "Show this QR code at VIP check-in. Your concert ticket is separate."],
+    details: [["Package", v.product.name], ["Show", date], ["Venue", v.show.venue_name ?? "TBA"], ["Pass code", p.code], ...(hasCheckinDetails(v.show) ? checkinRows(v.show).filter(([k]) => k !== "Date" && k !== "Venue") : [])],
+    images: [{ src: `${siteUrl()}/qr/${p.code}.png`, alt: `QR code for pass ${p.code}`, caption: p.code }],
+    button: { label: "Get directions", url: mapsUrl(v.show) },
+    footnote: `Questions? Reply to this email to reach the ${v.artist.name} team.`,
+  });
+  if (r.sent && db) await db.from("passes").update({ sent_to_attendee_at: new Date().toISOString() }).eq("id", passId);
+  return r;
 }

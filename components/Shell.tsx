@@ -17,6 +17,7 @@ export function artistNav(id: string, role: string): NavItem[] {
     ...(canEdit ? [
       { href: `${base}/tours`, label: "Tours & shows", icon: "calendar" as const },
       { href: `${base}/packages`, label: "VIP packages", icon: "star" as const },
+      { href: `${base}/orders`, label: "Orders", icon: "list" as const },
       { href: `${base}/check-in`, label: "Check-in", icon: "scan" as const },
       { href: `${base}/photos`, label: "Photos", icon: "camera" as const },
       { href: `${base}/support`, label: "Fan support", icon: "help" as const },

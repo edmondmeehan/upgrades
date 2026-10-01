@@ -6,7 +6,7 @@ import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
-import { refundOrderAction, voidPassAction, cancelShowAndRefund } from "./actions";
+import { refundOrderAction, voidPassAction, cancelShowAndRefund, createComp, resendConfirmation, setGuest, cancelComp } from "./actions";
 
 export const metadata = { title: "Orders" };
 export const dynamic = "force-dynamic";
@@ -14,9 +14,9 @@ export const maxDuration = 300; // cancelling a big show refunds many orders
 
 type P = { params: Promise<{ artistId: string; showId: string }>; searchParams: Promise<{ ok?: string; err?: string; q?: string }> };
 type Row = {
-  id: string; status: string; total_cents: number; created_at: string; confirmation_code: string; fans: { name: string | null; email: string; marketing_opt_in_at: string | null } | null;
+  id: string; status: string; is_comp: boolean; comp_note: string | null; total_cents: number; created_at: string; confirmation_code: string; fans: { name: string | null; email: string; marketing_opt_in_at: string | null } | null;
   order_items: { id: string; quantity: number; refunded_quantity: number; unit_price_cents: number; show_products: { products: { name: string } } | null;
-    passes: { id: string; code: string; checked_in_at: string | null; voided_at: string | null }[] }[];
+    passes: { id: string; code: string; checked_in_at: string | null; voided_at: string | null; attendee_name: string | null; attendee_email: string | null; sent_to_attendee_at: string | null }[] }[];
   refunds: { amount_cents: number; created_at: string }[];
 };
 const BADGE: Record<string, [string, string]> = {
@@ -31,12 +31,14 @@ export default async function Orders({ params, searchParams }: P) {
   const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status, tour_id").eq("id", showId).eq("artist_id", artistId).maybeSingle();
   if (!show) notFound();
   const { data } = await supabase.from("orders")
-    .select("id, status, total_cents, created_at, confirmation_code, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name)), passes(id, code, checked_in_at, voided_at)), refunds(amount_cents, created_at)")
+    .select("id, status, is_comp, comp_note, total_cents, created_at, confirmation_code, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name)), passes(id, code, checked_in_at, voided_at, attendee_name, attendee_email, sent_to_attendee_at)), refunds(amount_cents, created_at)")
     .eq("show_id", showId).eq("is_sample", false).order("created_at", { ascending: false }).returns<Row[]>();
+  const { data: pkgs } = await supabase.from("show_products").select("id, products!inner(name, archived_at, is_sample)").eq("show_id", showId).eq("active", true)
+    .eq("products.is_sample", false).is("products.archived_at", null).returns<{ id: string; products: { name: string } }[]>();
   const term = (q ?? "").trim().toLowerCase();
-  const orders = (data ?? []).filter((o) => !term || [o.fans?.name, o.fans?.email, o.confirmation_code].some((v) => v?.toLowerCase().includes(term)));
+  const orders = (data ?? []).filter((o) => !term || [o.fans?.name, o.fans?.email, o.confirmation_code, ...o.order_items.flatMap((i) => i.passes.map((p) => p.attendee_name))].some((v) => v?.toLowerCase().includes(term)));
   const all = data ?? [];
-  const paid = all.filter((o) => o.status !== "refunded");
+  const paid = all.filter((o) => o.status !== "refunded" && !o.is_comp);
   const gross = all.reduce((n, o) => n + o.total_cents - o.refunds.reduce((m, r) => m + r.amount_cents, 0), 0);
   const where = `${show.city ?? "Show"}${show.region ? `, ${show.region}` : ""}`;
 
@@ -46,6 +48,27 @@ export default async function Orders({ params, searchParams }: P) {
         {formatDate(show.show_date)}{show.venue_name ? `, ${show.venue_name}` : ""}. {paid.length} active order{paid.length === 1 ? "" : "s"}, {dollars(gross)} collected after refunds.
       </PageHead>
       <Flash ok={ok} err={err} />
+
+      {(pkgs ?? []).length > 0 && show.status !== "cancelled" && (
+        <details className="panel">
+          <summary className="cursor-pointer font-extrabold">Add comp passes</summary>
+          <form action={createComp.bind(null, artistId, showId)} className="mt-4 grid gap-3">
+            <p className="help">Free passes for crew, contest winners, friends and family. They work at check-in like paid passes and count toward the package&apos;s quantity.</p>
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_100px]">
+              <label className="field"><span>Package</span><select name="show_product" className="input">{pkgs!.map((p) => <option key={p.id} value={p.id}>{p.products.name}</option>)}</select></label>
+              <label className="field"><span>Passes</span><input name="qty" type="number" min={1} max={50} defaultValue={1} className="input" /></label>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="field"><span>Guest name</span><input name="name" maxLength={120} className="input" placeholder="Alex Rivera" /></label>
+              <label className="field"><span>Guest email</span><input name="email" type="email" required className="input" placeholder="alex@example.com" /></label>
+            </div>
+            <label className="field"><span>Note for your records (optional)</span><input name="note" maxLength={300} className="input" placeholder="KXYZ radio giveaway" /></label>
+            <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" name="send" defaultChecked className="check" />Email the guest their passes now</label>
+            <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" name="allow_over" className="check" />Allow over capacity (add them even if the package is full)</label>
+            <div><SubmitButton pendingText="Adding…">Add comp</SubmitButton></div>
+          </form>
+        </details>
+      )}
 
       <form className="flex gap-2" role="search">
         <input name="q" defaultValue={q ?? ""} className="input flex-1" placeholder="Search name, email or confirmation number" aria-label="Search orders" />
@@ -61,19 +84,20 @@ export default async function Orders({ params, searchParams }: P) {
             const refundablePasses = o.order_items.reduce((n, i) => n + i.quantity - i.refunded_quantity, 0);
             // Partly refunded in Stripe without saying which pass: the artist chooses which to void.
             const needsReview = o.status === "partially_refunded" && validPasses > refundablePasses;
-            const [label, cls] = BADGE[o.status] ?? [o.status, "b-neutral"];
+            const [label, cls] = o.is_comp ? (o.status === "refunded" ? ["Cancelled", "b-neutral"] : ["Comp", "b-lilac"]) : BADGE[o.status] ?? [o.status, "b-neutral"];
             return (
               <li key={o.id} className="card grid gap-3 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-extrabold">{o.fans?.name ?? o.fans?.email ?? "Guest"} <span className="font-medium text-mute">{o.fans?.email}</span>
                       {o.fans?.marketing_opt_in_at && <span className="badge b-lilac ml-2 align-middle">Opted in to news</span>}</p>
+                    {o.comp_note && <p className="help">{o.comp_note}</p>}
                     <p className="help"><span className="font-mono">{o.confirmation_code}</span>, {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })},{" "}
                       {o.order_items.map((i) => `${i.show_products?.products.name ?? "VIP"} x ${i.quantity}`).join(", ")}</p>
                   </div>
                   <div className="text-right">
                     <span className={`badge ${cls}`}>{label}</span>
-                    <p className="mt-1 font-extrabold tabular-nums">{dollars(o.total_cents)}</p>
+                    <p className="mt-1 font-extrabold tabular-nums">{o.is_comp ? "Free" : dollars(o.total_cents)}</p>
                     {refunded > 0 && <p className="help">{dollars(refunded)} refunded</p>}
                   </div>
                 </div>
@@ -81,16 +105,39 @@ export default async function Orders({ params, searchParams }: P) {
                 <ul className="flex flex-wrap gap-2">
                   {passes.map((p) => (
                     <li key={p.id} className={`flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold ${p.voided_at ? "bg-paper text-mute line-through" : p.checked_in_at ? "bg-[#d6f1ec] text-ok" : "bg-paper"}`}>
-                      <span className="font-mono">{p.code}</span>{p.checked_in_at ? "checked in" : p.voided_at ? "void" : ""}
+                      <span className="font-mono">{p.code}</span>{p.attendee_name && <span className="font-medium">{p.attendee_name}</span>}{p.checked_in_at ? "checked in" : p.voided_at ? "void" : ""}
                       {needsReview && !p.voided_at && !p.checked_in_at && (
                         <form action={voidPassAction.bind(null, artistId, showId, p.id)}><button className="font-bold text-rope underline">Void</button></form>
                       )}
                     </li>
                   ))}
                 </ul>
+                {o.status !== "refunded" && passes.some((p) => !p.voided_at) && (
+                  <details className="rounded-2xl bg-paper p-4">
+                    <summary className="cursor-pointer text-[14px] font-bold">Guest names</summary>
+                    <div className="mt-3 grid gap-3">
+                      {passes.filter((p) => !p.voided_at).map((p) => (
+                        <form key={p.id} action={setGuest.bind(null, artistId, showId, o.id, p.id)} className="grid gap-2 sm:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                          <span className="font-mono text-[13px] sm:pb-2.5">{p.code}</span>
+                          <label className="field"><span className="!text-[12px]">Guest name</span><input name="name" defaultValue={p.attendee_name ?? ""} maxLength={120} className="input input-sm" placeholder={o.fans?.name ?? "Name"} /></label>
+                          <label className="field"><span className="!text-[12px]">Guest email (optional)</span><input name="email" type="email" defaultValue={p.attendee_email ?? ""} className="input input-sm" /></label>
+                          <span className="flex items-center gap-2">
+                            <label className="flex items-center gap-1 text-[12px]"><input type="checkbox" name="send" className="check !size-4" />Email pass</label>
+                            <SubmitButton size="sm" variant="ghost">Save</SubmitButton>
+                          </span>
+                        </form>
+                      ))}
+                      <p className="help">The guest name shows at check-in. Ticking Email pass sends that one pass to the guest&apos;s own email.</p>
+                    </div>
+                  </details>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <form action={resendConfirmation.bind(null, artistId, showId, o.id)}><SubmitButton size="sm" variant="ghost" pendingText="Sending…">Resend confirmation</SubmitButton></form>
+                  {o.is_comp && o.status !== "refunded" && <form action={cancelComp.bind(null, artistId, showId, o.id)}><SubmitButton size="sm" variant="ghost" confirm="Cancel these comp passes? They'll stop working at check-in.">Cancel comp</SubmitButton></form>}
+                </div>
                 {needsReview && <p className="alert alert-yellow !text-[13px]">Part of this order was refunded in Stripe. Void the pass{refundablePasses === validPasses - 1 ? "" : "es"} that {refundablePasses === validPasses - 1 ? "was" : "were"} refunded so {refundablePasses === validPasses - 1 ? "it can't" : "they can't"} be used at the door.</p>}
 
-                {canRefund && o.status !== "refunded" && o.status !== "disputed" && (
+                {canRefund && !o.is_comp && o.status !== "refunded" && o.status !== "disputed" && (
                   <details className="rounded-2xl bg-paper p-4">
                     <summary className="cursor-pointer text-[14px] font-bold">Refund</summary>
                     <form action={refundOrderAction.bind(null, artistId, showId, o.id)} className="mt-3 grid gap-3">
