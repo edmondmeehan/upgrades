@@ -21,7 +21,7 @@ export function artistNav(id: string, role: string): NavItem[] {
   const link = (path: string, label: string, icon: NavItem["icon"]): NavItem => ({ href: `${base}${path}`, label, icon });
   return [
     { href: base, label: "Overview", icon: "home", exact: true },
-    ...group("Shows & VIP", "calendar", [canEdit && link("/tours", "Tours & shows", "calendar"), canEdit && link("/packages", "VIP packages", "star"), owner && link("/storefront", "Storefront", "palette")]),
+    ...group("Shows & VIP", "calendar", [canEdit && link("/tours", "Tours & shows", "calendar"), canEdit && link("/packages", "VIP packages", "star"), owner && link("/storefront", "Storefront", "palette"), canEdit && link("/integrations", "Integrations", "grid")]),
     ...group("Orders & fans", "users", [canEdit && link("/orders", "Orders", "list"), canEdit && link("/fans", "Fans", "users"), canEdit && link("/support", "Fan support", "help")]),
     ...group("Show day", "scan", [canEdit && link("/check-in", "Check-in", "scan"), canEdit && link("/photos", "Photos", "camera")]),
     ...group("Money", "dollar", [money && link("/financials", "Financials", "dollar"), money && link("/payments", "Payments", "card")]),

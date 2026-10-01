@@ -75,6 +75,12 @@ export async function fulfillSession(session: Stripe.Checkout.Session, accountId
   if (error) throw error;
   // Test vs. live, and any sales tax Stripe collected for the artist.
   await db.from("orders").update({ livemode: session.livemode, tax_cents: session.total_details?.amount_tax ?? 0 }).eq("id", orderId as string);
+  // Opted in to news: add them to the artist's Laylo too, if connected.
+  const { data: optIn } = await db.from("checkout_holds").select("artist_id, marketing_opt_in").eq("id", holdId).single();
+  if (optIn?.marketing_opt_in && session.customer_details?.email) {
+    const { syncFanToLaylo } = await import("@/lib/integrations");
+    await syncFanToLaylo(optIn.artist_id, session.customer_details.email);
+  }
   await sendConfirmation(holdId).catch((e) => console.error("[checkout] confirmation email", e));
   return orderId as string;
 }
