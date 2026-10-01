@@ -4,6 +4,7 @@ import { Countdown } from "./Countdown";
 import { ShareButtons } from "./ShareButtons";
 import { BuyButton } from "./BuyButton";
 import { HumanCheck } from "./HumanCheck";
+import { BuyFields } from "./BuyFields";
 import { startCheckout } from "@/app/[handle]/actions";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
@@ -100,18 +101,7 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
             <input type="hidden" name="slug" value={show.slug} />
             <input type="hidden" name="sp" value={p.id} />
             {err && <p role="alert" className="alert alert-red !py-2.5 !text-[14px]">{err}</p>}
-            <div className="flex gap-2">
-              {maxQty > 1 && (
-                <label className="field w-24"><span className="!text-[12px]">Quantity</span>
-                  <select name="qty" className="input input-sm" defaultValue="1">{Array.from({ length: maxQty }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select>
-                </label>
-              )}
-              {p.presale && (
-                <label className="field flex-1"><span className="!text-[12px]">Presale code</span>
-                  <input name="code" className="input input-sm uppercase" required autoComplete="off" /></label>
-              )}
-            </div>
-            {maxQty <= 1 && <input type="hidden" name="qty" value="1" />}
+            <BuyFields maxQty={maxQty} questions={p.questions ?? []} presale={p.presale} />
             <label className="flex items-start gap-2 text-[13px] text-mute">
               <input type="checkbox" name="marketing" className="check mt-0.5 !size-4" />
               <span>Email me news and future shows from {s.name}</span>

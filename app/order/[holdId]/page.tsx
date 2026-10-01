@@ -9,6 +9,7 @@ import { qrSvg } from "@/lib/qr";
 import { checkinNotes, checkinRows, hasCheckinDetails, mapsUrl } from "@/lib/checkinEmail";
 import { fanSetGuest, fanResend } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { describeAnswers, sanitizeQuestions } from "@/lib/questions";
 
 export const metadata = { title: "Your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -35,6 +36,7 @@ export default async function Order({ params, searchParams }: P) {
   const city = `${v.show.city ?? ""}${v.show.region ? `, ${v.show.region}` : ""}`;
   const pending = !v.order && v.hold.status === "pending";
   const qrs = await Promise.all(v.passes.map((p) => qrSvg(p.code)));
+  const qs = sanitizeQuestions(v.product.questions);
 
   return (
     <div className="min-h-screen bg-paper">
@@ -73,6 +75,7 @@ export default async function Order({ params, searchParams }: P) {
                   <div key={k} className="grid grid-cols-[96px_1fr] gap-3"><dt className="th pt-0.5">{k}</dt><dd className="font-semibold">{val}</dd></div>
                 ))}
               </dl>
+              {v.order.answers && describeAnswers(qs, v.order.answers) && <p className="rounded-2xl bg-paper px-4 py-3 text-[14px]"><span className="font-bold">Your answers:</span> {describeAnswers(qs, v.order.answers)}</p>}
               {v.product.included?.length > 0 && (
                 <div><p className="eyebrow mb-2">What&apos;s included</p>
                   <ul className="grid gap-1 text-[15px]">{v.product.included.map((i) => <li key={i} className="flex gap-2"><span aria-hidden className="font-bold text-violet">✓</span>{i}</li>)}</ul></div>
@@ -106,6 +109,7 @@ export default async function Order({ params, searchParams }: P) {
                     <div className="m-4 grid justify-items-center gap-2 rounded-2xl bg-white p-5 text-ink">
                       <div className="w-full max-w-[260px] [&_svg]:h-auto [&_svg]:w-full" aria-label={`QR code for pass ${p.code}`} role="img" dangerouslySetInnerHTML={{ __html: qrs[i] }} />
                       <span className="font-mono text-[22px] font-bold tracking-[0.14em]">{p.code}</span>
+                      {p.answers && describeAnswers(qs, p.answers) && <span className="text-[13px] text-mute">{describeAnswers(qs, p.answers)}</span>}
                     </div>
                     <div className="px-4 pb-4">
                       <a href={`/order/${holdId}/pass/${p.code}`} download={`vip-pass-${p.code}.png`} className="btn btn-yellow w-full">Save pass to my phone</a>

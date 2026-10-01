@@ -9,10 +9,10 @@ export type OrderView = {
   hold: { id: string; show_id: string; status: string; quantity: number; unit_price_cents: number; service_fee_cents: number; stripe_account_id: string; stripe_session_id: string | null; order_id: string | null; expires_at: string };
   artist: { name: string; handle: string };
   show: CheckinShow & { slug: string };
-  product: { name: string; includes_photo: boolean; included: string[] };
+  product: { name: string; includes_photo: boolean; included: string[]; questions?: unknown };
   pkgCheckin: { time: string | null; notes: string | null };
-  order: { id: string; status: string; is_comp: boolean; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
-  passes: { id: string; code: string; attendee_name: string | null; attendee_email: string | null; checked_in_at: string | null }[];
+  order: { id: string; status: string; is_comp: boolean; answers?: Record<string, string> | null; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
+  passes: { id: string; code: string; attendee_name: string | null; attendee_email: string | null; checked_in_at: string | null; answers?: Record<string, string> | null }[];
   photos: { url: string } | null; // gallery link, once the artist has sent photos
 };
 
@@ -25,14 +25,14 @@ export async function loadOrder(holdId: string): Promise<OrderView | null> {
   const [{ data: artist }, { data: show }, { data: sp }] = await Promise.all([
     db.from("artists").select("name, handle").eq("id", hold.artist_id).single(),
     db.from("shows").select(`slug, ${SHOW_CHECKIN_COLUMNS}`).eq("id", hold.show_id).single(),
-    db.from("show_products").select("checkin_time, checkin_notes, products(name, includes_photo, included)").eq("id", hold.show_product_id).single(),
+    db.from("show_products").select("checkin_time, checkin_notes, products(name, includes_photo, included, questions)").eq("id", hold.show_product_id).single(),
   ]);
   let order = null, passes: OrderView["passes"] = [];
   if (hold.order_id) {
-    const { data: o } = await db.from("orders").select("id, status, is_comp, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
+    const { data: o } = await db.from("orders").select("id, status, is_comp, answers, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
     order = o as OrderView["order"];
     const { data: items } = await db.from("order_items").select("id").eq("order_id", hold.order_id);
-    const { data: ps } = await db.from("passes").select("id, code, attendee_name, attendee_email, checked_in_at").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
+    const { data: ps } = await db.from("passes").select("id, code, attendee_name, attendee_email, checked_in_at, answers").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
     passes = ps ?? [];
   }
   let photos: OrderView["photos"] = null;

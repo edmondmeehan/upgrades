@@ -117,6 +117,7 @@ export function CheckInScanner({ check, undo }: Props) {
             <p className="text-[22px] font-extrabold leading-tight">{tone[2]}</p>
             {res.name && <p className="text-[18px] font-bold">{res.name}{res.of && res.of > 1 ? `, guest ${res.guest} of ${res.of}` : ""}</p>}
             {res.package && <p className="text-[15px] font-semibold opacity-90">{res.package}</p>}
+            {res.answersText && <p className="text-[15px] font-bold">{res.answersText}</p>}
             {res.result === "already" && res.at && <p className="text-[14px] opacity-90">At {new Date(res.at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}{res.by ? ` by ${res.by}` : ""}</p>}
             {res.result === "wrong_show" && <p className="text-[14px] opacity-90">This pass is for {res.other_city}{res.other_date ? `, ${new Date(`${res.other_date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}` : ""}.</p>}
             {res.result === "not_found" && <p className="text-[14px] opacity-90">Code {res.code || "(blank)"} isn&apos;t a pass for this artist. Try searching their name below.</p>}

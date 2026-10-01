@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { SubmitButton } from "./SubmitButton";
 import { ImageUpload } from "./ImageUpload";
 import type { PackageTemplate } from "@/lib/packages";
+import { QuestionsEditor } from "./QuestionsEditor";
+import type { Question } from "@/lib/questions";
 
 export type FormShow = {
   id: string; date: string; label: string; venue: string | null; tour_id: string; tour_name: string; past: boolean;
@@ -13,7 +15,7 @@ type Props = {
   action: (fd: FormData) => void | Promise<void>;
   artistId: string;
   initial: { kind: string; name: string; description: string; included: string[]; includes_photo: boolean; image_url: string | null;
-    on_sale_at: string | null; off_sale_at: string | null; presale_code: string | null; default_price: string; default_capacity: string };
+    on_sale_at: string | null; off_sale_at: string | null; presale_code: string | null; default_price: string; default_capacity: string; questions?: Question[] };
   shows: FormShow[];
   template?: PackageTemplate;
   submitLabel: string;
@@ -161,6 +163,8 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
         </div>
         <label className="field"><span>Presale code (optional)</span><input className="input max-w-xs uppercase" name="presale_code" defaultValue={initial.presale_code ?? ""} placeholder="FANCLUB" maxLength={30} /><small>Fans need this code to buy. Share it with your fan club or mailing list.</small></label>
       </section>
+
+      <QuestionsEditor initial={initial.questions ?? []} />
 
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton size="lg" pendingText="Saving…">{submitLabel}</SubmitButton>

@@ -6,6 +6,7 @@ import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
+import { describeAnswers, sanitizeQuestions } from "@/lib/questions";
 import { refundOrderAction, voidPassAction, cancelShowAndRefund, createComp, resendConfirmation, setGuest, cancelComp } from "./actions";
 
 export const metadata = { title: "Orders" };
@@ -14,9 +15,9 @@ export const maxDuration = 300; // cancelling a big show refunds many orders
 
 type P = { params: Promise<{ artistId: string; showId: string }>; searchParams: Promise<{ ok?: string; err?: string; q?: string }> };
 type Row = {
-  id: string; status: string; is_comp: boolean; comp_note: string | null; total_cents: number; created_at: string; confirmation_code: string; fans: { name: string | null; email: string; marketing_opt_in_at: string | null } | null;
-  order_items: { id: string; quantity: number; refunded_quantity: number; unit_price_cents: number; show_products: { products: { name: string } } | null;
-    passes: { id: string; code: string; checked_in_at: string | null; voided_at: string | null; attendee_name: string | null; attendee_email: string | null; sent_to_attendee_at: string | null }[] }[];
+  id: string; status: string; is_comp: boolean; comp_note: string | null; total_cents: number; created_at: string; confirmation_code: string; answers: Record<string, string> | null; fans: { name: string | null; email: string; marketing_opt_in_at: string | null } | null;
+  order_items: { id: string; quantity: number; refunded_quantity: number; unit_price_cents: number; show_products: { products: { name: string; questions: unknown } } | null;
+    passes: { id: string; code: string; checked_in_at: string | null; voided_at: string | null; attendee_name: string | null; attendee_email: string | null; sent_to_attendee_at: string | null; answers: Record<string, string> | null }[] }[];
   refunds: { amount_cents: number; created_at: string }[];
 };
 const BADGE: Record<string, [string, string]> = {
@@ -31,7 +32,7 @@ export default async function Orders({ params, searchParams }: P) {
   const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status, tour_id").eq("id", showId).eq("artist_id", artistId).maybeSingle();
   if (!show) notFound();
   const { data } = await supabase.from("orders")
-    .select("id, status, is_comp, comp_note, total_cents, created_at, confirmation_code, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name)), passes(id, code, checked_in_at, voided_at, attendee_name, attendee_email, sent_to_attendee_at)), refunds(amount_cents, created_at)")
+    .select("id, status, is_comp, comp_note, total_cents, created_at, confirmation_code, answers, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name, questions)), passes(id, code, checked_in_at, voided_at, attendee_name, attendee_email, sent_to_attendee_at, answers)), refunds(amount_cents, created_at)")
     .eq("show_id", showId).eq("is_sample", false).order("created_at", { ascending: false }).returns<Row[]>();
   const { data: pkgs } = await supabase.from("show_products").select("id, products!inner(name, archived_at, is_sample)").eq("show_id", showId).eq("active", true)
     .eq("products.is_sample", false).is("products.archived_at", null).returns<{ id: string; products: { name: string } }[]>();
@@ -70,6 +71,10 @@ export default async function Orders({ params, searchParams }: P) {
         </details>
       )}
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="help">Need a list for the venue or merch table? Download every pass with guest names and answers.</p>
+        <a href={`/a/${artistId}/shows/${showId}/orders/export`} className="btn btn-ghost btn-sm">Download CSV</a>
+      </div>
       <form className="flex gap-2" role="search">
         <input name="q" defaultValue={q ?? ""} className="input flex-1" placeholder="Search name, email or confirmation number" aria-label="Search orders" />
         <button className="btn btn-ghost">Search</button>
@@ -79,7 +84,9 @@ export default async function Orders({ params, searchParams }: P) {
         <ul className="grid gap-3">
           {orders.map((o) => {
             const refunded = o.refunds.reduce((n, r) => n + r.amount_cents, 0);
+            const qs = sanitizeQuestions(o.order_items[0]?.show_products?.products.questions);
             const passes = o.order_items.flatMap((i) => i.passes.map((p) => ({ ...p, pkg: i.show_products?.products.name ?? "VIP" })));
+            const orderAnswers = describeAnswers(qs, o.answers);
             const validPasses = passes.filter((p) => !p.voided_at).length;
             const refundablePasses = o.order_items.reduce((n, i) => n + i.quantity - i.refunded_quantity, 0);
             // Partly refunded in Stripe without saying which pass: the artist chooses which to void.
@@ -92,6 +99,7 @@ export default async function Orders({ params, searchParams }: P) {
                     <p className="font-extrabold">{o.fans?.name ?? o.fans?.email ?? "Guest"} <span className="font-medium text-mute">{o.fans?.email}</span>
                       {o.fans?.marketing_opt_in_at && <span className="badge b-lilac ml-2 align-middle">Opted in to news</span>}</p>
                     {o.comp_note && <p className="help">{o.comp_note}</p>}
+                    {orderAnswers && <p className="mt-1 text-[13px]">{orderAnswers}</p>}
                     <p className="help"><span className="font-mono">{o.confirmation_code}</span>, {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })},{" "}
                       {o.order_items.map((i) => `${i.show_products?.products.name ?? "VIP"} x ${i.quantity}`).join(", ")}</p>
                   </div>
@@ -105,7 +113,7 @@ export default async function Orders({ params, searchParams }: P) {
                 <ul className="flex flex-wrap gap-2">
                   {passes.map((p) => (
                     <li key={p.id} className={`flex items-center gap-2 rounded-full px-3 py-1 text-[12px] font-semibold ${p.voided_at ? "bg-paper text-mute line-through" : p.checked_in_at ? "bg-[#d6f1ec] text-ok" : "bg-paper"}`}>
-                      <span className="font-mono">{p.code}</span>{p.attendee_name && <span className="font-medium">{p.attendee_name}</span>}{p.checked_in_at ? "checked in" : p.voided_at ? "void" : ""}
+                      <span className="font-mono">{p.code}</span>{p.attendee_name && <span className="font-medium">{p.attendee_name}</span>}{p.answers && <span className="font-medium text-mute">{describeAnswers(qs, p.answers)}</span>}{p.checked_in_at ? "checked in" : p.voided_at ? "void" : ""}
                       {needsReview && !p.voided_at && !p.checked_in_at && (
                         <form action={voidPassAction.bind(null, artistId, showId, p.id)}><button className="font-bold text-rope underline">Void</button></form>
                       )}

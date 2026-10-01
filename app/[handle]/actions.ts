@@ -4,6 +4,7 @@ import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { siteUrl } from "@/lib/email";
 import { clientKey, isHuman, HUMAN_FAIL } from "@/lib/human";
+import { readAnswers, sanitizeQuestions } from "@/lib/questions";
 
 type Hold = { hold_id: string; quantity: number; unit_price_cents: number; service_fee_cents: number; stripe_account_id: string;
   artist_name: string; handle: string; show_slug: string; product_name: string; image_url: string | null;
@@ -18,9 +19,14 @@ export async function startCheckout(fd: FormData) {
 
   if (!(await isHuman(fd))) redirect(back(HUMAN_FAIL));
   const qty = Math.floor(Number(fd.get("qty") ?? 1));
+  // Check answers against the package's own questions (never trust the form for what's required).
+  const { data: pq } = await db.from("show_products").select("products(questions)").eq("id", sp).maybeSingle();
+  const questions = sanitizeQuestions((pq as unknown as { products: { questions: unknown } } | null)?.products?.questions);
+  const { answers, error: answerErr } = readAnswers(questions, Math.min(Math.max(qty, 1), 4), fd);
+  if (answerErr) redirect(back(answerErr));
   const { data, error } = await db.rpc("create_checkout_hold", {
     p_show_product: sp, p_qty: qty, p_code: String(fd.get("code") ?? "") || null,
-    p_client: await clientKey("checkout"), p_marketing: fd.get("marketing") === "on",
+    p_client: await clientKey("checkout"), p_marketing: fd.get("marketing") === "on", p_answers: answers,
   });
   if (error || !data) redirect(back(error?.message?.replace(/^.*?: /, "") || "Something went wrong. Try again."));
   const h = data as Hold;

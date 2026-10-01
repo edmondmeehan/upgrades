@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireArtist } from "@/lib/auth";
 import { cleanError, withMsg } from "@/lib/util";
 import { parseCents as cents, type ShowProduct } from "@/lib/packages";
+import { sanitizeQuestions } from "@/lib/questions";
 
 type ShowRow = { show_id: string; price: string | null; capacity: string | null }; // null = package default
 
@@ -28,6 +29,7 @@ export async function savePackage(artistId: string, productId: string | null, fd
     image_url: String(fd.get("image_url") ?? "").trim() || null,
     default_price_cents: cents(String(fd.get("default_price") ?? "")),
     default_capacity: Math.floor(Number(fd.get("default_capacity"))),
+    questions: (() => { try { return sanitizeQuestions(JSON.parse(String(fd.get("questions") ?? "[]"))); } catch { return []; } })(),
   };
   if (!Number.isFinite(product.default_price_cents) || product.default_price_cents < 100) redirect(withMsg(back, "err", "Set a default price of at least $1."));
   if (!Number.isFinite(product.default_capacity) || product.default_capacity < 1) redirect(withMsg(back, "err", "Set a default quantity of at least 1."));

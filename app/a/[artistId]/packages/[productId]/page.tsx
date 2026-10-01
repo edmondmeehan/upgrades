@@ -55,7 +55,7 @@ export default async function EditPackage({ params, searchParams }: P) {
         initial={{ kind: p.kind, name: p.name, description: p.description ?? "", included: p.included ?? [], includes_photo: p.includes_photo, image_url: p.image_url,
           on_sale_at: first?.on_sale_at ?? null, off_sale_at: first?.off_sale_at ?? null, presale_code: first?.presale_code ?? null,
           default_price: p.default_price_cents != null ? String(p.default_price_cents / 100) : first ? String(first.price_cents / 100) : "100",
-          default_capacity: String(p.default_capacity ?? first?.capacity ?? 30) }} />
+          default_capacity: String(p.default_capacity ?? first?.capacity ?? 30), questions: (p as unknown as { questions?: import("@/lib/questions").Question[] }).questions ?? [] }} />
       <form action={archivePackage.bind(null, artistId, productId, !p.archived_at)} className="border-t border-line pt-6">
         {p.archived_at
           ? <SubmitButton variant="ghost">Restore package</SubmitButton>

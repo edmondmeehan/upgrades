@@ -6,6 +6,7 @@ import { siteUrl } from "@/lib/email";
 export type StorePackage = {
   id: string; name: string; description: string | null; included: string[]; image_url: string | null; includes_photo: boolean;
   price_cents: number; presale: boolean; on_sale_at: string | null; off_sale_at: string | null; remaining: number;
+  questions?: import("@/lib/questions").Question[];
 };
 export type StoreShow = { slug: string; date: string; venue: string; city: string; region: string | null; country: string; tour: string; fee_bps?: number; packages: StorePackage[] };
 export type Store = {
