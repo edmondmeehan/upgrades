@@ -13,25 +13,19 @@ export function artistNav(id: string, role: string): NavItem[] {
   if (role === "door") return [{ href: `${base}/check-in`, label: "Check-in", icon: "scan" }];
   const canEdit = role === "owner" || role === "rep" || role === "admin";
   const owner = role === "owner" || role === "admin";
+  const money = role !== "rep";
+  const group = (label: string, icon: NavItem["icon"], children: (NavItem | false)[]): NavItem[] => {
+    const kids = children.filter(Boolean) as NavItem[];
+    return kids.length ? [{ href: kids[0].href, label, icon, children: kids }] : [];
+  };
+  const link = (path: string, label: string, icon: NavItem["icon"]): NavItem => ({ href: `${base}${path}`, label, icon });
   return [
     { href: base, label: "Overview", icon: "home", exact: true },
-    ...(canEdit ? [
-      { href: `${base}/tours`, label: "Tours & shows", icon: "calendar" as const },
-      { href: `${base}/packages`, label: "VIP packages", icon: "star" as const },
-      { href: `${base}/orders`, label: "Orders", icon: "list" as const },
-      { href: `${base}/fans`, label: "Fans", icon: "users" as const },
-      { href: `${base}/check-in`, label: "Check-in", icon: "scan" as const },
-      { href: `${base}/photos`, label: "Photos", icon: "camera" as const },
-      { href: `${base}/support`, label: "Fan support", icon: "help" as const },
-    ] : []),
-    ...(role !== "rep" && role !== "door" ? [{ href: `${base}/financials`, label: "Financials", icon: "dollar" as const }] : []),
-    ...(role !== "rep" && role !== "door" ? [{ href: `${base}/payments`, label: "Payments", icon: "card" as const }] : []),
-    ...(owner ? [
-      { href: `${base}/storefront`, label: "Storefront", icon: "palette" as const },
-      { href: `${base}/verification`, label: "Verification", icon: "badge" as const },
-      { href: `${base}/team`, label: "Team", icon: "users" as const },
-      { href: `${base}/settings`, label: "Settings", icon: "settings" as const },
-    ] : []),
+    ...group("Shows & VIP", "calendar", [canEdit && link("/tours", "Tours & shows", "calendar"), canEdit && link("/packages", "VIP packages", "star"), owner && link("/storefront", "Storefront", "palette")]),
+    ...group("Orders & fans", "users", [canEdit && link("/orders", "Orders", "list"), canEdit && link("/fans", "Fans", "users"), canEdit && link("/support", "Fan support", "help")]),
+    ...group("Show day", "scan", [canEdit && link("/check-in", "Check-in", "scan"), canEdit && link("/photos", "Photos", "camera")]),
+    ...group("Money", "dollar", [money && link("/financials", "Financials", "dollar"), money && link("/payments", "Payments", "card")]),
+    ...group("Account", "settings", [owner && link("/team", "Team", "users"), owner && link("/verification", "Verification", "badge"), owner && link("/settings", "Settings", "settings")]),
   ];
 }
 
@@ -48,13 +42,12 @@ export function globalNav(isAdmin: boolean): NavItem[] {
 export function adminNav(): NavItem[] {
   return [
     { href: "/admin", label: "Artists", icon: "grid", exact: true },
-    { href: "/admin/finance", label: "Platform finance", icon: "dollar" },
-    { href: "/admin/payments", label: "Stripe", icon: "card" },
-    { href: "/admin/promos", label: "Promo codes", icon: "tag" },
-    { href: "/admin/growth", label: "Growth", icon: "trend" },
-    { href: "/admin/launch", label: "Go live", icon: "ok" },
-    { href: "/admin/team", label: "Admins", icon: "users" },
-    { href: "/admin/audit", label: "Audit log", icon: "list" },
+    { href: "/admin/growth", label: "Growth", icon: "trend", children: [
+      { href: "/admin/growth", label: "Growth", icon: "trend" }, { href: "/admin/promos", label: "Promo codes", icon: "tag" }] },
+    { href: "/admin/finance", label: "Money", icon: "dollar", children: [
+      { href: "/admin/finance", label: "Platform finance", icon: "dollar" }, { href: "/admin/payments", label: "Stripe", icon: "card" }] },
+    { href: "/admin/launch", label: "Platform", icon: "shield", children: [
+      { href: "/admin/launch", label: "Go live", icon: "ok" }, { href: "/admin/team", label: "Admins", icon: "users" }, { href: "/admin/audit", label: "Audit log", icon: "list" }] },
   ];
 }
 
