@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStripe, requirementLabel, stripeState, STRIPE_STATE_LABEL, type ArtistStripe } from "@/lib/stripe";
 import { pct } from "@/lib/util";
-import { startPayoutSetup, refreshStripe, startCardSetup, redeemPromo } from "./actions";
+import { startPayoutSetup, refreshStripe, startCardSetup, redeemPromo, setCollectTax } from "./actions";
 
 export const metadata = { title: "Payments" };
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
@@ -18,6 +18,8 @@ export default async function Payments({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err } = await searchParams;
   const { supabase, artist, role } = await requireArtist(artistId, ["owner", "accountant"]);
+  const { data: taxRow } = await supabase.from("artists").select("collect_tax").eq("id", artistId).single<{ collect_tax: boolean }>();
+  const collectTax = !!taxRow?.collect_tax;
   const { data: promoRows } = await supabase.rpc("active_promo", { p_artist: artistId });
   const promo = (promoRows as { code: string; fee_bps: number; ends_at: string | null; show_limit: number | null; description: string | null }[] | null)?.[0] ?? null;
   const canAct = role === "owner";
@@ -92,6 +94,23 @@ export default async function Payments({ params, searchParams }: P) {
             <SubmitButton variant={row?.card_last4 ? "ghost" : "primary"} pendingText="Opening Stripe…">{row?.card_last4 ? "Replace card" : "Add a card"}</SubmitButton>
           </form>
         )}
+      </section>
+
+      <section className="panel grid gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2>Sales tax</h2>
+            <p className="muted mt-1 max-w-2xl">You&apos;re the seller, so whether VIP upgrades are taxable where you play is your call (merch bundles often are; experiences often aren&apos;t). If you switch this on, Stripe Tax works out and adds sales tax at checkout using the tax settings in your own Stripe account, and the tax goes into your Stripe balance for you to file. Stripe charges a small fee per transaction for this.</p>
+          </div>
+          <span className={`badge ${collectTax ? "b-approved" : "b-neutral"}`}>{collectTax ? "Collecting tax" : "Off"}</span>
+        </div>
+        {collectTax && <p className="help">Finish Stripe Tax in your Stripe dashboard (Tax, then Settings: your business address and the states where you&apos;re registered). Until it&apos;s set up, checkout keeps working without tax.</p>}
+        {role !== "accountant" && (
+          <form action={setCollectTax.bind(null, artistId, !collectTax)}>
+            <SubmitButton size="sm" variant={collectTax ? "ghost" : "dark"}>{collectTax ? "Turn off sales tax" : "Collect sales tax with Stripe Tax"}</SubmitButton>
+          </form>
+        )}
+        <p className="help">Not tax advice. If you&apos;re unsure, ask your accountant whether your packages are taxable in the states you tour.</p>
       </section>
 
       <section className="panel grid gap-3">

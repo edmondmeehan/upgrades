@@ -16,10 +16,12 @@ export async function sendSettlement(showId: string, opts: { onlyTo?: string } =
   const { data } = await db.rpc("show_settlement", { p_show: showId });
   const s = data as Settlement | null;
   if (!s) return { sent: 0, error: "Show not found." };
-  const [{ data: artist }, { data: members }] = await Promise.all([
+  const [{ data: artist }, { data: members }, { data: taxRows }] = await Promise.all([
     db.from("artists").select("name").eq("id", s.artist_id).single<{ name: string }>(),
     db.from("artist_members").select("role, profiles(email)").eq("artist_id", s.artist_id).in("role", ["owner", "accountant"]),
+    db.from("orders").select("tax_cents").eq("show_id", showId).eq("is_sample", false).eq("is_comp", false).neq("status", "refunded"),
   ]);
+  const tax = (taxRows ?? []).reduce((n, r) => n + (r.tax_cents ?? 0), 0);
   const to = opts.onlyTo ? [opts.onlyTo] : [...new Set(((members ?? []) as unknown as { profiles: { email: string } | null }[]).map((m) => m.profiles?.email).filter(Boolean) as string[])];
   if (!to.length || !artist) return { sent: 0, error: "No owner or accountant to send to." };
 
@@ -33,6 +35,7 @@ export async function sendSettlement(showId: string, opts: { onlyTo?: string } =
     ["Card processing (Stripe)", `-${dollars(Number(s.stripe_fee_cents))}`],
     ...(Number(s.dispute_cost_cents) ? [["Disputes", `-${dollars(Number(s.dispute_cost_cents))}`] as [string, string]] : []),
     ["Your net", dollars(Number(s.net_cents))],
+    ...(tax ? [["Sales tax collected (yours to file and pay)", dollars(tax)] as [string, string]] : []),
   ];
   const link = `${siteUrl()}/a/${s.artist_id}/financials/shows/${s.show_id}`;
   const content = {

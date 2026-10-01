@@ -73,7 +73,9 @@ export async function createComp(artistId: string, showId: string, fd: FormData)
     p_allow_over: fd.get("allow_over") === "on",
   });
   if (error || !data) redirect(withMsg(back, "err", error?.message?.replace(/^.*?: /, "") ?? "Couldn't add the comp."));
-  const { hold_id } = data as { hold_id: string };
+  const { hold_id, order_id } = data as { hold_id: string; order_id: string };
+  const { stripeMode } = await import("@/lib/stripe");
+  if (stripeMode() === "live") { const adm = createAdminClient(); if (adm) await adm.from("orders").update({ livemode: true }).eq("id", order_id); }
   let sent = false;
   if (fd.get("send") === "on") { const { sendOrderConfirmation } = await import("@/lib/checkout"); await sendOrderConfirmation(hold_id); sent = true; }
   revalidatePath(back);

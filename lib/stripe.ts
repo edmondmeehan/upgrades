@@ -114,3 +114,4 @@ export async function onboardingLink(artistId: string, accountId: string) {
   });
   return link.url;
 }
+

@@ -105,3 +105,10 @@ export async function redeemPromo(artistId: string, fd: FormData) {
   const r = data as { code: string };
   redirect(withMsg(back, "ok", `Promo ${r.code} applied. Fans now see the lower service fee at checkout.`));
 }
+
+/** Owner switches Stripe Tax on or off for their checkouts. */
+export async function setCollectTax(artistId: string, on: boolean) {
+  const { supabase } = await requireArtist(artistId, ["owner"]);
+  await supabase.from("artists").update({ collect_tax: on }).eq("id", artistId);
+  redirect(withMsg(`/a/${artistId}/payments`, "ok", on ? "Stripe Tax is on for your checkouts. Make sure it's set up in your Stripe dashboard." : "Sales tax collection is off."));
+}

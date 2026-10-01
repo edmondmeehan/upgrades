@@ -73,6 +73,8 @@ export async function fulfillSession(session: Stripe.Checkout.Session, accountId
     p_postal: session.customer_details?.address?.postal_code ?? null,
   });
   if (error) throw error;
+  // Test vs. live, and any sales tax Stripe collected for the artist.
+  await db.from("orders").update({ livemode: session.livemode, tax_cents: session.total_details?.amount_tax ?? 0 }).eq("id", orderId as string);
   await sendConfirmation(holdId).catch((e) => console.error("[checkout] confirmation email", e));
   return orderId as string;
 }

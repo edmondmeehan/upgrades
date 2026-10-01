@@ -49,7 +49,8 @@ export async function startCheckout(fd: FormData) {
     if (h.service_fee_cents > 0) {
       line.push({ quantity: 1, price_data: { currency: "usd", unit_amount: h.service_fee_cents, product_data: { name: "Service fee" } } });
     }
-    const session = await stripe.checkout.sessions.create({
+    const { data: art } = await db.from("artists").select("collect_tax").eq("handle", h.handle).single<{ collect_tax: boolean }>();
+    const params: import("stripe").Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       line_items: line,
       billing_address_collection: "auto", // collects the billing ZIP fans can use to look up their order
@@ -63,7 +64,19 @@ export async function startCheckout(fd: FormData) {
       expires_at: Math.floor(Date.now() / 1000) + 31 * 60, // just past Stripe's 30-minute minimum; the hold lasts 35
       success_url: `${siteUrl()}/order/${h.hold_id}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl()}/${h.handle}/${h.show_slug}#p-${sp}`,
-    }, { stripeAccount: h.stripe_account_id, idempotencyKey: `ontour-checkout-${h.hold_id}` });
+    };
+    let session: import("stripe").Stripe.Checkout.Session;
+    if (art?.collect_tax) {
+      // Stripe Tax on the artist's own account (they're the seller). If their tax settings aren't finished, sell without tax rather than fail.
+      try {
+        session = await stripe.checkout.sessions.create({ ...params, automatic_tax: { enabled: true } }, { stripeAccount: h.stripe_account_id, idempotencyKey: `ontour-checkout-tax-${h.hold_id}` });
+      } catch (e) {
+        console.error("[checkout] Stripe Tax not ready for", h.handle, (e as Error).message);
+        session = await stripe.checkout.sessions.create(params, { stripeAccount: h.stripe_account_id, idempotencyKey: `ontour-checkout-${h.hold_id}` });
+      }
+    } else {
+      session = await stripe.checkout.sessions.create(params, { stripeAccount: h.stripe_account_id, idempotencyKey: `ontour-checkout-${h.hold_id}` });
+    }
     await db.rpc("attach_checkout_session", { p_hold: h.hold_id, p_session: session.id });
     url = session.url!;
   } catch (e) {
