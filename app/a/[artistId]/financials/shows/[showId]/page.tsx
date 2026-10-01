@@ -6,17 +6,23 @@ import { PrintButton } from "@/components/FinanceNav";
 import { money, rate, sum } from "@/lib/money";
 import { isFinal, showLabel, type ProductSales, type ShowInfo, type ShowMoney } from "@/lib/finance";
 import { formatDate, formatDateTime } from "@/lib/util";
+import { Flash } from "@/components/Flash";
+import { SubmitButton } from "@/components/SubmitButton";
+import { sendStatement } from "./actions";
 
-type P = { params: Promise<{ artistId: string; showId: string }> };
+type P = { params: Promise<{ artistId: string; showId: string }>; searchParams?: Promise<{ ok?: string; err?: string }> };
 type Refund = { id: string; amount_cents: number; service_fee_refunded_cents: number; reason: string | null; created_at: string };
 type Dispute = { id: string; amount_cents: number; fee_cents: number; status: string; reason: string | null; opened_at: string };
 
-export default async function Settlement({ params }: P) {
+export default async function Settlement({ params, searchParams }: P) {
   const { artistId, showId } = await params;
+  const { ok, err } = (await searchParams) ?? {};
   const { supabase, artist } = await requireArtist(artistId, ["owner", "accountant"]);
   const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, tours(name)")
     .eq("id", showId).eq("artist_id", artistId).maybeSingle<ShowInfo & { tours: { name: string } }>();
   if (!show) notFound();
+  const { data: st } = await supabase.rpc("show_settlement", { p_show: showId });
+  const statement = st as { sent_at: string | null; sent_net_cents: number | null; net_cents: number; orders: number } | null;
   const [{ data: m }, { data: products }, { data: orderIds }] = await Promise.all([
     supabase.from("v_show_money").select("*").eq("show_id", showId).maybeSingle<ShowMoney>(),
     supabase.from("v_show_product_sales").select("*").eq("show_id", showId).order("price_cents", { ascending: false }).returns<ProductSales[]>(),
@@ -39,8 +45,25 @@ export default async function Settlement({ params }: P) {
     ["Chargebacks and dispute fees", -(m?.dispute_cost_cents ?? 0)],
   ];
 
+  const changed = !!statement?.sent_at && statement.sent_net_cents !== null && Number(statement.sent_net_cents) !== Number(statement.net_cents);
   return (
     <div className="grid gap-6">
+      <Flash ok={ok} err={err} />
+      {statement && statement.orders > 0 && (
+        <section className={`no-print flex flex-wrap items-center justify-between gap-3 rounded-[20px] p-4 ${changed ? "bg-[#fff6d6]" : "bg-paper"}`}>
+          <p className="text-[14px]">
+            <span className="font-extrabold">Statement email: </span>
+            {statement.sent_at
+              ? <>sent {formatDateTime(statement.sent_at)} to the owners and accountants.{changed ? " The numbers have changed since (usually a late refund)." : ""}</>
+              : past ? "not sent yet. It goes out automatically the morning after the show." : "goes out automatically the morning after the show."}
+          </p>
+          <span className="flex flex-wrap gap-2">
+            <form action={sendStatement.bind(null, artistId, showId, true)}><SubmitButton size="sm" variant="ghost" pendingText="Sending…">Email me a copy</SubmitButton></form>
+            <form action={sendStatement.bind(null, artistId, showId, false)}><SubmitButton size="sm" variant={changed ? "primary" : "ghost"} pendingText="Sending…">
+              {changed ? "Send revised statement" : statement.sent_at ? "Resend to everyone" : "Send statement now"}</SubmitButton></form>
+          </span>
+        </section>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="crumbs no-print"><Link href={`/a/${artistId}/financials/shows`}>Show settlements</Link></p>

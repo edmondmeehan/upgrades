@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const JOBS: Record<string, string> = {
-  "stripe-webhook": "Stripe webhooks", "daily-sales": "Daily sales email", "checkin-emails": "Check-in emails", email: "Sending email",
+  "stripe-webhook": "Stripe webhooks", "daily-sales": "Daily sales email", "checkin-emails": "Check-in emails", settlements: "Settlement statements", email: "Sending email",
 };
 
 /** Records that a background job worked. */
