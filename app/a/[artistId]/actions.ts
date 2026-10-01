@@ -133,6 +133,10 @@ export async function setShowStatus(artistId: string, showId: string, fd: FormDa
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
   const status = str(fd, "status");
   if (!["draft", "published", "cancelled"].includes(status)) redirect(`/a/${artistId}/shows/${showId}`);
+  if (status === "cancelled") {
+    const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("show_id", showId).eq("is_sample", false).in("status", ["paid", "partially_refunded", "disputed"]);
+    if (count) redirect(withMsg(`/a/${artistId}/shows/${showId}/orders`, "err", `This show has ${count} paid order${count === 1 ? "" : "s"}. Use "Cancel show and refund everyone" so fans get their money back.`));
+  }
   if (status === "published") {
     const { data: cur } = await supabase.from("shows").select("city, venue_name").eq("id", showId).single<{ city: string | null; venue_name: string | null }>();
     if (!cur?.city || !cur?.venue_name) redirect(withMsg(`/a/${artistId}/shows/${showId}`, "err", "Add the city and venue before publishing."));

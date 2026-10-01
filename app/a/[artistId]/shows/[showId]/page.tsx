@@ -77,6 +77,11 @@ export default async function ShowPage({ params, searchParams }: P) {
         <div><SubmitButton variant="dark">Save show</SubmitButton></div>
       </form>
 
+      <Link href={`/a/${artistId}/shows/${showId}/orders`} className="card flex items-center justify-between gap-3 p-5 !no-underline text-ink hover:border-violet">
+        <span><span className="block font-extrabold">Orders and refunds</span><span className="help">See who bought, refund an order, or cancel the show and refund everyone.</span></span>
+        <span className="btn btn-ghost btn-sm">Open orders</span>
+      </Link>
+
       <section className="panel grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2>VIP packages at this show</h2>

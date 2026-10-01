@@ -47,7 +47,11 @@ export default async function Order({ params, searchParams }: P) {
         {v.order ? (
           <>
             <div className="card grid gap-4 p-6">
-              <span className="badge b-published justify-self-start">Order confirmed</span>
+              {v.order.status === "refunded"
+                ? <p className="alert alert-gray">This order was refunded, so its passes are no longer valid. The money goes back to your card within 5 to 10 business days.</p>
+                : v.order.status === "partially_refunded"
+                  ? <span className="badge b-pending justify-self-start">Partly refunded</span>
+                  : <span className="badge b-published justify-self-start">Order confirmed</span>}
               {v.photos && v.product.includes_photo && (
                 <a href={v.photos.url} className="flex items-center justify-between gap-3 rounded-2xl bg-navy px-5 py-4 !no-underline text-white">
                   <span><span className="block text-[17px] font-extrabold text-yellow">Your photos are ready</span><span className="text-[14px] text-[#d9d5e6]">View and save them to your phone</span></span>

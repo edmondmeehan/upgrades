@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
 import { getStripe, retrieveAccount, saveAccount, saveCard } from "@/lib/stripe";
 import { fulfillSession } from "@/lib/checkout";
+import { syncChargeRefunds, syncDispute } from "@/lib/refunds";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -49,6 +50,17 @@ export async function POST(req: NextRequest) {
     // Fan checkout on an artist's connected account.
     if (event.account && (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded")) {
       await fulfillSession(event.data.object as Stripe.Checkout.Session, event.account);
+      return NextResponse.json({ received: true });
+    }
+    // Refunds and disputes on an artist's account, including ones made directly in Stripe.
+    if (event.account && (event.type === "charge.refunded" || event.type === "charge.refund.updated")) {
+      const obj = event.data.object as Stripe.Charge | Stripe.Refund;
+      const charge = obj.object === "charge" ? obj : await stripe.charges.retrieve(typeof obj.charge === "string" ? obj.charge : obj.charge!.id, {}, { stripeAccount: event.account });
+      await syncChargeRefunds(charge, event.account);
+      return NextResponse.json({ received: true });
+    }
+    if (event.account && event.type.startsWith("charge.dispute.")) {
+      await syncDispute(event.data.object as Stripe.Dispute, event.account, event.type === "charge.dispute.created");
       return NextResponse.json({ received: true });
     }
     if (event.account && event.type === "checkout.session.expired") {
