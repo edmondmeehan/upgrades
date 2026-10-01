@@ -10,6 +10,7 @@ export type ShellArtist = { id: string; name: string; status: ArtistStatus; role
 
 export function artistNav(id: string, role: string): NavItem[] {
   const base = `/a/${id}`;
+  if (role === "door") return [{ href: `${base}/check-in`, label: "Check-in", icon: "scan" }];
   const canEdit = role === "owner" || role === "rep" || role === "admin";
   const owner = role === "owner" || role === "admin";
   return [
@@ -23,8 +24,8 @@ export function artistNav(id: string, role: string): NavItem[] {
       { href: `${base}/photos`, label: "Photos", icon: "camera" as const },
       { href: `${base}/support`, label: "Fan support", icon: "help" as const },
     ] : []),
-    ...(role !== "rep" ? [{ href: `${base}/financials`, label: "Financials", icon: "dollar" as const }] : []),
-    ...(role !== "rep" ? [{ href: `${base}/payments`, label: "Payments", icon: "card" as const }] : []),
+    ...(role !== "rep" && role !== "door" ? [{ href: `${base}/financials`, label: "Financials", icon: "dollar" as const }] : []),
+    ...(role !== "rep" && role !== "door" ? [{ href: `${base}/payments`, label: "Payments", icon: "card" as const }] : []),
     ...(owner ? [
       { href: `${base}/storefront`, label: "Storefront", icon: "palette" as const },
       { href: `${base}/verification`, label: "Verification", icon: "badge" as const },

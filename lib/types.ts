@@ -1,5 +1,5 @@
 export type ArtistStatus = "draft" | "pending" | "approved" | "rejected" | "suspended";
-export type MemberRole = "owner" | "rep" | "accountant";
+export type MemberRole = "owner" | "rep" | "accountant" | "door";
 export type ProofMethod = "code_post" | "domain_email" | "third_party";
 
 export type Profile = { id: string; email: string; name: string | null; is_super_admin: boolean };
@@ -71,4 +71,5 @@ export const ROLE_LABEL: Record<MemberRole, string> = {
   owner: "Artist",
   rep: "Artist rep",
   accountant: "Accountant",
+  door: "Door staff",
 };

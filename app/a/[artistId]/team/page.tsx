@@ -78,6 +78,8 @@ export default async function Team({ params, searchParams }: P) {
             <span><span className="font-semibold">Artist rep</span><br /><span className="muted text-sm">Manager, tour manager, or photographer. Sets up shows, check-in details, scanning, and photos. Can&apos;t change payouts.</span></span></label>
           <label className="flex items-start gap-3"><input type="radio" name="role" value="accountant" className="check mt-0.5" />
             <span><span className="font-semibold">Accountant</span><br /><span className="muted text-sm">Read-only settlements, payouts, and year-end exports. No fan data.</span></span></label>
+          <label className="flex items-start gap-3"><input type="radio" name="role" value="door" className="check mt-0.5" />
+            <span><span className="font-semibold">Door staff</span><br /><span className="muted text-sm">Venue or crew checking fans in. Only sees Check-in: guest names and packages, no emails, orders or money.</span></span></label>
         </fieldset>
         <div><SubmitButton pendingText="Sending…">Send invite</SubmitButton></div>
       </form>

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
 import type { CheckInResult } from "@/app/a/[artistId]/check-in/actions";
 
-type Props = { check: (code: string) => Promise<CheckInResult>; undo: (passId: string) => Promise<{ ok: boolean }> };
+type Props = { check: (code: string) => Promise<CheckInResult>; undo: (passId: string) => Promise<{ ok: boolean }>; managed?: boolean };
 
 const TONE: Record<string, [string, string, string]> = { // bg, fg, title
   ok: ["#0a5146", "#ffffff", "Checked in"],
@@ -25,7 +25,7 @@ function beep(ok: boolean) {
   navigator.vibrate?.(ok ? 80 : [80, 60, 80]);
 }
 
-export function CheckInScanner({ check, undo }: Props) {
+export function CheckInScanner({ check, undo, managed = false }: Props) {
   const router = useRouter();
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -43,7 +43,7 @@ export function CheckInScanner({ check, undo }: Props) {
     const r = await check(code);
     setRes(r);
     beep(r.result === "ok");
-    router.refresh();
+    if (!managed) router.refresh();
     setTimeout(() => { busy.current = false; }, 1200);
   }, [check, router]);
 
@@ -125,7 +125,7 @@ export function CheckInScanner({ check, undo }: Props) {
             {res.message && <p className="text-[14px] opacity-90">{res.message}</p>}
             <div className="mt-1 flex gap-2">
               {res.result === "ok" && res.pass_id && (
-                <button type="button" className="rounded-full bg-white/20 px-3 py-1.5 text-[13px] font-bold" onClick={async () => { await undo(res.pass_id!); setRes(null); router.refresh(); }}>Undo</button>
+                <button type="button" className="rounded-full bg-white/20 px-3 py-1.5 text-[13px] font-bold" onClick={async () => { await undo(res.pass_id!); setRes(null); if (!managed) router.refresh(); }}>Undo</button>
               )}
               <button type="button" className="rounded-full bg-white/20 px-3 py-1.5 text-[13px] font-bold" onClick={() => setRes(null)}>Dismiss</button>
             </div>

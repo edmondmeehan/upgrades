@@ -202,14 +202,18 @@ export async function submitVerification(artistId: string, fd: FormData) {
 
 // ── Team ─────────────────────────────────────────────────────
 export async function inviteMember(artistId: string, fd: FormData) {
-  const { supabase, artist, profile } = await requireArtist(artistId, ["owner"]);
+  // Owners invite any role; reps can invite door staff (from Check-in).
+  const roleIn = str(fd, "role");
+  const { supabase, artist, profile, role: myRole } = await requireArtist(artistId, roleIn === "door" ? ["owner", "rep"] : ["owner"]);
   const email = str(fd, "email").toLowerCase();
-  const role = (str(fd, "role") === "accountant" ? "accountant" : "rep") as MemberRole;
+  const role = (roleIn === "accountant" ? "accountant" : roleIn === "door" ? "door" : "rep") as MemberRole;
+  const backTo = myRole === "rep" || fd.get("from") === "check-in" ? `/a/${artistId}/check-in` : `/a/${artistId}/team`;
   const { data: token, error } = await supabase.rpc("create_invitation", { p_artist: artistId, p_email: email, p_role: role });
-  if (error) done(`/a/${artistId}/team`, error, "");
+  if (error) done(backTo, error, "");
   const link = `${siteUrl()}/invite/${token}`;
   const scope = role === "accountant"
     ? "read-only access to settlements, payouts, and year-end exports"
+    : role === "door" ? "access to check fans in at the door from your phone"
     : "access to set up shows, check-in details, scanning, and photos";
   const { sent, error: mailErr } = await sendEmail({
     to: email,
@@ -221,7 +225,7 @@ export async function inviteMember(artistId: string, fd: FormData) {
     footnote: "This link works for 14 days. Sign in or create an account with this email address to accept.",
   });
   revalidatePath(`/a/${artistId}/team`);
-  redirect(withMsg(`/a/${artistId}/team`, sent ? "ok" : "err", sent ? `Invite sent to ${email}.` : `Invite created for ${email}, but the email didn't send (${mailErr ?? "email isn't connected"}). Copy the link below and send it yourself.`));
+  redirect(withMsg(backTo, sent ? "ok" : "err", sent ? `Invite sent to ${email}.` : `Invite created for ${email}, but the email didn't send (${mailErr ?? "email isn't connected"}). Copy the link: ${link}`));
 }
 
 export async function revokeInvite(artistId: string, invitationId: string) {

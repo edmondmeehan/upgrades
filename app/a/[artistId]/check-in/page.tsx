@@ -2,14 +2,18 @@ import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { formatDate } from "@/lib/util";
+import { Flash } from "@/components/Flash";
+import { SubmitButton } from "@/components/SubmitButton";
+import { inviteMember } from "../actions";
 
 export const metadata = { title: "Check-in" };
-type P = { params: Promise<{ artistId: string }> };
+type P = { params: Promise<{ artistId: string }>; searchParams?: Promise<{ ok?: string; err?: string }> };
 type S = { id: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; status: string };
 
-export default async function CheckInShows({ params }: P) {
+export default async function CheckInShows({ params, searchParams }: P) {
   const { artistId } = await params;
-  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { ok, err } = (await searchParams) ?? {};
+  const { supabase, role } = await requireArtist(artistId, ["owner", "rep", "door"]);
   const today = new Date().toISOString().slice(0, 10);
   const since = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
   const { data: shows } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status").eq("artist_id", artistId)
@@ -43,12 +47,26 @@ export default async function CheckInShows({ params }: P) {
 
   return (
     <>
-      <PageHead title="Check-in">Pick a show to scan VIP passes at the door. Works on any phone browser; no app to install.</PageHead>
+      <PageHead title="Check-in">Pick a show to scan VIP passes at the door. Works on any phone browser, with no app to install, and keeps working if the signal drops.</PageHead>
+      <Flash ok={ok} err={err} />
       {upcoming.length === 0 && recent.length === 0 ? <p className="card px-4 py-12 text-center muted">No shows to check in yet.</p> : (
         <>
           {upcoming.length > 0 && <ul className="grid gap-3">{upcoming.map((s) => <Row key={s.id} s={s} />)}</ul>}
           {recent.length > 0 && (<><h2 className="mt-2">Recent shows</h2><ul className="grid gap-3">{recent.map((s) => <Row key={s.id} s={s} />)}</ul></>)}
         </>
+      )}
+      {role !== "door" && (
+        <details className="panel mt-2">
+          <summary className="cursor-pointer font-extrabold">Invite door staff</summary>
+          <form action={inviteMember.bind(null, artistId)} className="mt-3 grid gap-3">
+            <input type="hidden" name="role" value="door" /><input type="hidden" name="from" value="check-in" />
+            <p className="help">Venue staff or crew who check fans in. They only see Check-in: guest names and packages, no emails, orders or money.</p>
+            <div className="flex flex-wrap gap-2">
+              <input name="email" type="email" required placeholder="Their email" className="input input-sm min-w-[240px] flex-1" aria-label="Email" />
+              <SubmitButton size="sm" pendingText="Sending…">Send invite</SubmitButton>
+            </div>
+          </form>
+        </details>
       )}
     </>
   );

@@ -46,6 +46,8 @@ export async function requireArtist(artistId: string, allowed?: MemberRole[]) {
     .maybeSingle<{ role: MemberRole }>();
   const role: MemberRole | "admin" | null = m?.role ?? (s.profile.is_super_admin ? "admin" : null);
   if (!role) notFound();
+  // Door staff only ever see Check-in.
+  if (role === "door" && !allowed?.includes("door")) redirect(`/a/${artistId}/check-in`);
   if (allowed && role !== "admin" && !allowed.includes(role)) notFound();
   if (role === "admin") await requireAdminTwoStep(s.supabase, `/a/${artistId}`);
   return { ...s, artist, role };
