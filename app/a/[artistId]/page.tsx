@@ -67,16 +67,25 @@ export default async function Overview({ params, searchParams }: P) {
     );
   }
 
-  const submitted = ["pending", "approved", "rejected", "suspended"].includes(artist.status);
+  // "Launch your VIP": the steps from sign-up to first sale, each linking to where it's done.
+  const [{ count: liveVip }, { count: orderCount }] = await Promise.all([
+    supabase.from("show_products").select("id, shows!inner(status, show_date)", { count: "exact", head: true }).eq("artist_id", artistId).eq("active", true).eq("is_sample", false)
+      .eq("shows.status", "published").gte("shows.show_date", new Date().toISOString().slice(0, 10)),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("artist_id", artistId).eq("is_sample", false).eq("is_comp", false),
+  ]);
+  const approved = artist.status === "approved" || artist.status === "suspended";
+  const owner = isOwnerish(role), editor = canEditShows(role);
   const steps = [
-    { done: true, label: "Create your artist account" },
-    { done: submitted, label: "Submit verification", href: isOwnerish(role) ? `${base}/verification` : undefined },
-    { done: artist.status === "approved" || artist.status === "suspended", label: "Get approved by P&T" },
-    { done: !!(pay?.charges_enabled && pay?.payouts_enabled), label: "Connect Stripe to get paid", href: isOwnerish(role) ? `${base}/payments` : undefined },
-    { done: (tourCount ?? 0) > 0, label: "Add a tour", href: canEditShows(role) ? `${base}/tours` : undefined },
-    { done: (publishedCount ?? 0) > 0, label: "Publish a show", href: canEditShows(role) ? `${base}/tours` : undefined },
+    { done: approved, label: "Get verified", note: artist.status === "pending" ? "P&T is reviewing it, usually within a business day." : "Prove you're really " + artist.name + " so your storefront can go live.", href: owner ? `${base}/verification` : undefined, cta: artist.status === "pending" ? "See status" : "Get verified", minutes: 3 },
+    { done: !!(pay?.charges_enabled && pay?.payouts_enabled), label: "Set up payouts", note: "Connect Stripe so fan payments land in your bank.", href: owner ? `${base}/payments` : undefined, cta: "Set up payouts", minutes: 5 },
+    { done: (showCount ?? 0) > 0 && (pkgCount ?? 0) > 0, label: "Add your tour and VIP packages", note: "Dates, packages and prices in one guided setup.", href: editor ? `${base}/launch` : undefined, cta: "Set up a tour", minutes: 5 },
+    { done: !!(design?.brand_color || design?.header_image_url), label: "Make your storefront yours", note: "Your colors, a header photo and genres.", href: owner ? `${base}/storefront` : undefined, cta: "Design it", minutes: 2 },
+    { done: (liveVip ?? 0) > 0, label: "Publish a show with VIP on sale", note: "Shows need a city and venue to publish.", href: editor ? `${base}/tours` : undefined, cta: "Publish", minutes: 1 },
+    { done: (orderCount ?? 0) > 0, label: "Share your link and make your first sale", note: `upgrades.ontour.vip/${artist.handle}`, href: approved ? `/${artist.handle}` : undefined, cta: "Open storefront", minutes: 1 },
   ];
-  const doneCount = steps.filter((s) => s.done).length;
+  const doneCount = steps.filter((x) => x.done).length;
+  const next = steps.find((x) => !x.done && x.href);
+  const allDone = doneCount === steps.length;
 
   return (
     <>
@@ -94,25 +103,45 @@ export default async function Overview({ params, searchParams }: P) {
       )}
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="card p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2>Getting to your first sale</h2>
-            <span className="muted text-[13px] font-semibold">{doneCount} of {steps.length} done</span>
-          </div>
-          <div className="mb-5 h-2 overflow-hidden rounded bg-[#eceaf2]"><i className="block h-full rounded bg-violet" style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
-          <ol className="grid">
-            {steps.map((s, i) => (
-              <li key={s.label} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
-                <span aria-hidden className={`grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-extrabold ${s.done ? "bg-yellow text-ink" : "bg-paper text-mute"}`}>
-                  {s.done ? "✓" : i + 1}
-                </span>
-                <span className={`flex-1 ${s.done ? "text-mute" : "font-semibold"}`}>{s.label}</span>
-                {!s.done && s.href ? <Link href={s.href} className="btn btn-sm">Start</Link> : null}
-                <span className="sr-only">{s.done ? "Done" : "Not done"}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
+        {allDone ? (
+          <section className="card grid gap-3 p-6">
+            <p className="eyebrow">You&apos;re live</p>
+            <h2 className="text-[24px]">VIP is on sale at {liveVip} show{liveVip === 1 ? "" : "s"}</h2>
+            <p className="muted">Keep sharing your link, and check Orders and Fans as sales come in.</p>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/${artist.handle}`} className="btn">Open storefront</Link>
+              {editor && <Link href={`${base}/orders`} className="btn btn-ghost">Orders</Link>}
+              {editor && <Link href={`${base}/launch`} className="btn btn-ghost">Set up another tour</Link>}
+            </div>
+          </section>
+        ) : (
+          <section className="card grid gap-5 p-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2>Launch your VIP</h2>
+              <span className="muted text-[13px] font-semibold">{doneCount} of {steps.length} done</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded bg-[#eceaf2]"><i className="block h-full rounded bg-violet" style={{ width: `${(doneCount / steps.length) * 100}%` }} /></div>
+            {next && (
+              <div className="grid gap-2 rounded-2xl bg-navy p-5 text-white">
+                <p className="text-[12px] font-bold uppercase tracking-[0.1em] text-yellow">Next step, about {next.minutes} min</p>
+                <p className="text-[20px] font-extrabold">{next.label}</p>
+                <p className="text-[14px] text-[#d9d5e6]">{next.note}</p>
+                <Link href={next.href!} className="btn btn-yellow mt-1 justify-self-start">{next.cta}</Link>
+              </div>
+            )}
+            <ol className="grid">
+              {steps.map((x, i) => (
+                <li key={x.label} className="flex items-center gap-3 border-t border-line py-3 first:border-t-0">
+                  <span aria-hidden className={`grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-extrabold ${x.done ? "bg-yellow text-ink" : "bg-paper text-mute"}`}>{x.done ? "✓" : i + 1}</span>
+                  <span className="min-w-0 flex-1"><span className={`block ${x.done ? "text-mute" : "font-semibold"}`}>{x.label}</span>
+                    {!x.done && <span className="block truncate text-[13px] text-mute">{x.note}</span>}</span>
+                  {!x.done && x.href && x !== next ? <Link href={x.href} className="btn btn-ghost btn-sm">{x.cta}</Link> : null}
+                  <span className="sr-only">{x.done ? "Done" : "Not done"}</span>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
         <aside className="grid gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="stat"><b>{tourCount ?? 0}</b><span>Tours</span></div>

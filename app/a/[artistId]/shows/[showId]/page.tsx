@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
+import { SellingBlockers } from "@/components/SellingBlockers";
+import { sellingBlockers } from "@/lib/readiness";
 import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -20,6 +22,7 @@ export default async function ShowPage({ params, searchParams }: P) {
   const { artistId, showId } = await params;
   const { ok, err } = await searchParams;
   const { supabase, artist } = await requireArtist(artistId, ["owner", "rep"]);
+  const blockers = await sellingBlockers(supabase, artistId, artist.status);
   const { data: show } = await supabase.from("shows").select("*, tours(name)").eq("id", showId).eq("artist_id", artistId)
     .maybeSingle<Show & { tours: { name: string } }>();
   if (!show) notFound();
@@ -39,6 +42,7 @@ export default async function ShowPage({ params, searchParams }: P) {
 
   return (
     <div className="grid max-w-3xl gap-6">
+      <SellingBlockers blockers={blockers} />
       <PageHead crumbs={[{ href: `/a/${artistId}/tours`, label: "Tours & shows" }, { href: `/a/${artistId}/tours/${show.tour_id}`, label: show.tours.name }]}
         title={`${show.city ?? "City TBD"}, ${formatDate(show.show_date, { month: "short", day: "numeric", year: "numeric" })}`}
         aside={<ShowStatus status={show.status} incomplete={!show.city || !show.venue_name} />}>

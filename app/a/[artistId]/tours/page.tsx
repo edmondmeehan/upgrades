@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
+import { SellingBlockers } from "@/components/SellingBlockers";
+import { sellingBlockers } from "@/lib/readiness";
 import { Flash } from "@/components/Flash";
 import { PageHead } from "@/components/Shell";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -12,7 +14,8 @@ type TourRow = { id: string; name: string; status: string; shows: { show_date: s
 export default async function Tours({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err } = await searchParams;
-  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { supabase, artist } = await requireArtist(artistId, ["owner", "rep"]);
+  const blockers = await sellingBlockers(supabase, artistId, artist.status);
   const { data } = await supabase.from("tours").select("id, name, status, shows(show_date, status)")
     .eq("artist_id", artistId).order("created_at", { ascending: false }).returns<TourRow[]>();
   const tours = data ?? [];
@@ -20,14 +23,17 @@ export default async function Tours({ params, searchParams }: P) {
 
   return (
     <>
-      <PageHead title="Tours & shows" />
+      <PageHead title="Tours & shows" aside={<Link href={`/a/${artistId}/launch`} className="btn btn-ghost">Guided tour setup</Link>} />
       <Flash ok={ok} err={err} />
+      <SellingBlockers blockers={blockers} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div>
           {tours.length === 0 ? (
             <div className="card grid justify-items-center gap-2 px-4 py-12 text-center">
-              <h2 className="text-[16px]">No tours yet</h2>
-              <p className="help">Create one to start adding show dates.</p>
+              <h2 className="text-[18px]">Set up your first tour</h2>
+              <p className="help max-w-sm">Paste your dates, pick VIP packages and set prices in one guided flow. About five minutes.</p>
+              <Link href={`/a/${artistId}/launch`} className="btn mt-2">Start guided setup</Link>
+              <p className="help">Or create a tour on the right and add dates yourself.</p>
             </div>
           ) : (
             <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(250px,1fr))]">

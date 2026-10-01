@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
+import { SellingBlockers } from "@/components/SellingBlockers";
+import { sellingBlockers } from "@/lib/readiness";
 import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -16,7 +18,8 @@ type P = { params: Promise<{ artistId: string; tourId: string }>; searchParams: 
 export default async function TourPage({ params, searchParams }: P) {
   const { artistId, tourId } = await params;
   const { ok, err } = await searchParams;
-  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { supabase, artist } = await requireArtist(artistId, ["owner", "rep"]);
+  const blockers = await sellingBlockers(supabase, artistId, artist.status);
   const { data: tour } = await supabase.from("tours").select("*").eq("id", tourId).eq("artist_id", artistId).maybeSingle<Tour>();
   if (!tour) notFound();
   const { data } = await supabase.from("shows").select("*").eq("tour_id", tourId).order("show_date").returns<Show[]>();
@@ -42,6 +45,7 @@ export default async function TourPage({ params, searchParams }: P) {
 
   return (
     <div className="grid gap-6">
+      <SellingBlockers blockers={blockers} />
       <PageHead crumbs={[{ href: `/a/${artistId}/tours`, label: "Tours & shows" }]} title={tour.name}
         aside={<>
           {tour.status === "archived" && <span className="badge b-archived">Archived</span>}

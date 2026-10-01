@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
+import { SellingBlockers } from "@/components/SellingBlockers";
+import { sellingBlockers } from "@/lib/readiness";
 import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
 import { TEMPLATES, KIND_LABEL, dollars, priceRange, type Product, type ShowProduct } from "@/lib/packages";
@@ -10,7 +12,8 @@ type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: s
 export default async function Packages({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err, tour } = await searchParams;
-  const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
+  const { supabase, artist } = await requireArtist(artistId, ["owner", "rep"]);
+  const blockers = await sellingBlockers(supabase, artistId, artist.status);
   const [{ data: products }, { data: sps }] = await Promise.all([
     supabase.from("products").select("*").eq("artist_id", artistId).eq("is_sample", false).order("created_at").returns<Product[]>(),
     supabase.from("show_products").select("*, shows(currency)").eq("artist_id", artistId).eq("is_sample", false).returns<(ShowProduct & { shows: { currency: string } | null })[]>(),
@@ -22,6 +25,7 @@ export default async function Packages({ params, searchParams }: P) {
     <>
       <PageHead title="VIP packages">The upgrades fans can buy. Build a package once, then choose which shows it&apos;s sold at and for how much.</PageHead>
       <Flash ok={ok} err={err} />
+      <SellingBlockers blockers={blockers} />
 
       {live.length > 0 && (
         <ul className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
@@ -55,8 +59,15 @@ export default async function Packages({ params, searchParams }: P) {
         </ul>
       )}
 
+      {live.length === 0 && (
+        <div className="card flex flex-wrap items-center justify-between gap-3 p-5">
+          <span><span className="block font-extrabold">New here? Set up your tour and packages together</span>
+            <span className="help">Dates, packages and prices in one guided flow.</span></span>
+          <Link href={`/a/${artistId}/launch`} className="btn">Start guided setup</Link>
+        </div>
+      )}
       <section className="grid gap-3">
-        <h2>{live.length ? "Add another package" : "Start with a template"}</h2>
+        <h2>{live.length ? "Add another package" : "Or start with a template"}</h2>
         <ul className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
           {TEMPLATES.map((t) => (
             <li key={t.kind}>

@@ -34,3 +34,13 @@ export function csvResponse(filename: string, rows: (string | number | null | un
 }
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Same rule as the database: which currency a show in this country sells in. */
+export function currencyForCountry(country?: string | null): Currency {
+  const c = (country ?? "US").toUpperCase();
+  if (c === "GB" || c === "UK") return "gbp";
+  if (c === "CA") return "cad";
+  if (c === "AU") return "aud";
+  if (["IE", "FR", "DE", "ES", "IT", "NL", "BE", "AT", "PT", "FI", "GR", "LU"].includes(c)) return "eur";
+  return "usd";
+}
