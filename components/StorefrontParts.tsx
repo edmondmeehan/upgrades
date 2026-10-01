@@ -173,3 +173,60 @@ export function ArtistDisclaimer({ name, handle, order }: { name: string; handle
     </aside>
   );
 }
+
+/** What a show's VIP button should say, from its packages. */
+function vipStatus(sh: StoreShow): { kind: "buy" | "soon" | "onsale" | "soldout"; label: string; from?: number } {
+  const pk = sh.packages;
+  if (!pk.length) return { kind: "soon", label: "VIP coming soon" };
+  const now = Date.now();
+  const live = pk.filter((p) => !p.on_sale_at || new Date(p.on_sale_at).getTime() <= now);
+  const available = live.filter((p) => p.remaining > 0);
+  if (available.length) {
+    const from = Math.min(...available.map((p) => p.price_cents));
+    return { kind: "buy", label: available.every((p) => p.presale) ? "Presale VIP" : "Get VIP", from };
+  }
+  if (live.length === pk.length) return { kind: "soldout", label: "VIP sold out" };
+  const next = pk.filter((p) => p.on_sale_at && new Date(p.on_sale_at).getTime() > now).map((p) => p.on_sale_at!).sort()[0];
+  return { kind: "onsale", label: `VIP on sale ${new Date(next).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` };
+}
+
+/** Tour-page style list: one row per date with a VIP button; buying happens on the show page. */
+export function TourDates({ s, t }: { s: Store; t: Theme }) {
+  const thisYear = new Date().getFullYear();
+  return (
+    <ul className="card divide-y divide-line overflow-hidden">
+      {s.shows.map((sh) => {
+        const d = new Date(`${sh.date}T12:00:00Z`);
+        const st = vipStatus(sh);
+        const href = `/${s.handle}/${sh.slug}`;
+        const place = [sh.city, sh.region ?? (sh.country && sh.country !== "US" ? (sh.country === "GB" ? "UK" : sh.country) : null)].filter(Boolean).join(", ");
+        return (
+          <li key={sh.slug} id={sh.slug} className="scroll-mt-6">
+            <div className="grid grid-cols-[64px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 px-4 py-4 sm:grid-cols-[72px_minmax(0,1fr)_auto] sm:px-6">
+              <Link href={href} className="grid justify-items-center rounded-xl border border-line py-1.5 text-center !no-underline text-ink" aria-label={formatDate(sh.date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}>
+                <span className="text-[12px] font-bold uppercase tracking-[0.08em] text-mute">{d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" })}</span>
+                <span className="text-[24px] font-extrabold leading-none">{d.getUTCDate()}</span>
+                <span className="text-[11px] font-semibold text-mute">{d.getUTCFullYear() !== thisYear ? d.getUTCFullYear() : d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</span>
+              </Link>
+              <Link href={href} className="min-w-0 !no-underline text-ink">
+                <span className="block truncate text-[18px] font-extrabold leading-tight">{place || "City TBA"}</span>
+                <span className="block truncate text-[15px] text-mute">{sh.venue}</span>
+              </Link>
+              <div className="col-span-2 sm:col-span-1 sm:justify-self-end">
+                {st.kind === "buy" ? (
+                  <Link href={href} className="btn w-full !no-underline sm:w-auto" style={{ background: t.accent, color: t.accentFg }}>
+                    {st.label}{st.from !== undefined ? `, from ${dollars(st.from, sh.currency)}` : ""}
+                  </Link>
+                ) : st.kind === "soon" ? (
+                  <a href="#follow" className="btn btn-ghost w-full !no-underline sm:w-auto">{st.label}: get notified</a>
+                ) : (
+                  <Link href={href} className="btn btn-ghost w-full !no-underline sm:w-auto">{st.label}</Link>
+                )}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

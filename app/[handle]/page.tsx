@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/Icon";
-import { StoreHero, ShowCard, ArtistDisclaimer } from "@/components/StorefrontParts";
+import { StoreHero, TourDates, ArtistDisclaimer } from "@/components/StorefrontParts";
 import { loadStore, storeUrl, theme } from "@/lib/storefront";
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
@@ -25,7 +25,10 @@ export default async function Storefront({ params, searchParams }: { params: Pro
     <div className="min-h-screen bg-white">
       <StoreHero s={s} t={t} follow={{ state: sp.followed, err: sp.follow_err }} />
       <main className="home-wrap py-8">
-        <p className="mb-4 font-bold" aria-live="polite">{s.shows.length} upcoming show{s.shows.length === 1 ? "" : "s"}{withPkgs ? `, ${withPkgs} with VIP upgrades` : ""}</p>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[22px]">Tour dates</h2>
+          <p className="help" aria-live="polite">{s.shows.length} upcoming show{s.shows.length === 1 ? "" : "s"}{withPkgs ? `, ${withPkgs} with VIP` : ""}</p>
+        </div>
         {s.shows.length === 0 ? (
           <div className="grid justify-items-center gap-2 px-4 py-12 text-center">
             <span className="grid size-13 place-items-center rounded-full bg-paper"><Icon name="calendar" size={24} /></span>
@@ -33,7 +36,7 @@ export default async function Storefront({ params, searchParams }: { params: Pro
             <p className="help">Check back soon.</p>
           </div>
         ) : (
-          <ul className="grid gap-5">{s.shows.map((sh) => <ShowCard key={sh.slug} sh={sh} s={s} t={t} />)}</ul>
+          <TourDates s={s} t={t} />
         )}
       </main>
       <ArtistDisclaimer name={s.name} handle={s.handle} />
