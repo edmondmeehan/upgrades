@@ -76,6 +76,15 @@ Add `CRON_SECRET` in Vercel (any long random string); Vercel sends it with each 
 - **Checkout limit:** at most 3 unpaid checkouts open per visitor at a time.
 - **Alerts:** admins are emailed when Stripe webhooks, the daily report, check-in emails or email sending fail (once an hour per job). See System health in P&T admin.
 
+### 9. Apple Wallet passes
+The "Add to Apple Wallet" button appears on fans' order pages once these are set in Vercel:
+1. Apple Developer account (P&T's), then Certificates, Identifiers & Profiles, Identifiers, add a **Pass Type ID** (e.g. `pass.vip.ontour.upgrades`).
+2. Create a **Pass Type ID certificate** for it, download, open in Keychain, export as .p12, then convert:
+   `openssl pkcs12 -in pass.p12 -clcerts -nokeys -out signer.pem` and `openssl pkcs12 -in pass.p12 -nocerts -out key.pem`
+3. Download Apple's WWDR G4 certificate (apple.com/certificateauthority) and convert: `openssl x509 -inform der -in AppleWWDRCAG4.cer -out wwdr.pem`
+4. Vercel env vars: `APPLE_WALLET_PASS_TYPE_ID`, `APPLE_WALLET_TEAM_ID` (10 characters, top right of the developer portal),
+   `APPLE_WALLET_SIGNER_CERT` (signer.pem), `APPLE_WALLET_SIGNER_KEY` (key.pem), `APPLE_WALLET_KEY_PASSPHRASE` (if the key has one), `APPLE_WALLET_WWDR` (wwdr.pem). PEM contents can be pasted as-is or base64-encoded.
+
 ### Local development
 ```bash
 cp .env.example .env.local   # fill in Supabase values

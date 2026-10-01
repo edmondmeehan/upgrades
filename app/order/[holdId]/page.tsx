@@ -10,6 +10,7 @@ import { checkinNotes, checkinRows, hasCheckinDetails, mapsUrl } from "@/lib/che
 import { fanSetGuest, fanResend } from "./actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { describeAnswers, sanitizeQuestions } from "@/lib/questions";
+import { walletEnabled } from "@/lib/wallet";
 
 export const metadata = { title: "Your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function Order({ params, searchParams }: P) {
   const pending = !v.order && v.hold.status === "pending";
   const qrs = await Promise.all(v.passes.map((p) => qrSvg(p.code)));
   const qs = sanitizeQuestions(v.product.questions);
+  const wallet = walletEnabled() && v.order?.status !== "refunded";
 
   return (
     <div className="min-h-screen bg-paper">
@@ -111,13 +113,19 @@ export default async function Order({ params, searchParams }: P) {
                       <span className="font-mono text-[22px] font-bold tracking-[0.14em]">{p.code}</span>
                       {p.answers && describeAnswers(qs, p.answers) && <span className="text-[13px] text-mute">{describeAnswers(qs, p.answers)}</span>}
                     </div>
-                    <div className="px-4 pb-4">
-                      <a href={`/order/${holdId}/pass/${p.code}`} download={`vip-pass-${p.code}.png`} className="btn btn-yellow w-full">Save pass to my phone</a>
+                    <div className="grid gap-2 px-4 pb-4">
+                      {wallet && (
+                        <a href={`/order/${holdId}/wallet/${p.code}`} className="flex h-12 items-center justify-center gap-2 rounded-xl bg-black text-[15px] font-semibold text-white !no-underline">
+                          <svg width="22" height="18" viewBox="0 0 22 18" aria-hidden><rect x="1" y="1" width="20" height="16" rx="3" fill="#fff" /><rect x="1" y="4" width="20" height="3" fill="#ff9f0a" /><rect x="1" y="7" width="20" height="3" fill="#30d158" /><rect x="1" y="10" width="20" height="3" fill="#0a84ff" /></svg>
+                          Add to Apple Wallet
+                        </a>
+                      )}
+                      <a href={`/order/${holdId}/pass/${p.code}`} download={`vip-pass-${p.code}.png`} className={`btn w-full ${wallet ? "btn-ghost !border-white/30 !text-white" : "btn-yellow"}`}>Save pass as an image</a>
                     </div>
                   </li>
                 ))}
               </ul>
-              <p className="help">Tip: on iPhone, open the saved pass and add it to your Photos favorites so it&apos;s one tap away at the door. Brighten your screen when you scan.</p>
+              <p className="help">{wallet ? "On iPhone, Add to Apple Wallet puts your pass on your lock screen around show time." : "Tip: on iPhone, open the saved pass and add it to your Photos favorites so it's one tap away at the door."} Brighten your screen when you scan.</p>
               {v.passes.length > 0 && v.show.show_date >= new Date().toISOString().slice(0, 10) && (
                 <details id="guests" className="rounded-2xl bg-paper p-4" open={v.passes.length > 1 && v.passes.some((p) => !p.attendee_name)}>
                   <summary className="cursor-pointer font-bold">{v.passes.length > 1 ? "Who's coming? Add your guests" : "Going yourself? Or send this pass to someone"}</summary>

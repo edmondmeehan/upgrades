@@ -18,10 +18,10 @@ export default async function AllOrders({ params, searchParams }: P) {
   const { artistId } = await params;
   const { q, show, status } = await searchParams;
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
-  const [{ data: shows }, { data }] = await Promise.all([
+  const [{ data: shows }, { data, error: loadErr }] = await Promise.all([
     supabase.from("shows").select("id, show_date, city, region").eq("artist_id", artistId).neq("status", "draft").order("show_date", { ascending: false }).limit(200),
     (() => {
-      let qy = supabase.from("orders").select("id, status, is_comp, total_cents, created_at, confirmation_code, show_id, fans(name, email), shows(show_date, city, region), order_items(quantity, show_products(products(name)), passes(attendee_name))")
+      let qy = supabase.from("orders").select("id, status, is_comp, total_cents, created_at, confirmation_code, show_id, fans(name, email), shows!orders_show_id_fkey(show_date, city, region), order_items(quantity, show_products(products(name)), passes(attendee_name))")
         .eq("artist_id", artistId).eq("is_sample", false).order("created_at", { ascending: false }).limit(500);
       if (show) qy = qy.eq("show_id", show);
       if (status === "comp") qy = qy.eq("is_comp", true);
@@ -50,7 +50,8 @@ export default async function AllOrders({ params, searchParams }: P) {
         <button className="btn btn-ghost">Filter</button>
       </form>
       <p className="help">{rows.length} order{rows.length === 1 ? "" : "s"}{rows.length ? `, ${dollars(paid.reduce((n, o) => n + o.total_cents, 0))} in active paid orders` : ""}{(data ?? []).length === 500 ? ". Showing the latest 500; filter by show to see older ones." : ""}</p>
-      {rows.length === 0 ? <p className="card px-4 py-12 text-center muted">No orders match.</p> : (
+      {loadErr && <p className="alert alert-red">Orders couldn&apos;t load ({loadErr.message}). Try refreshing; if it keeps happening, contact P&amp;T.</p>}
+      {rows.length === 0 ? <p className="card px-4 py-12 text-center muted">{loadErr ? "" : "No orders match."}</p> : (
         <div className="card overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-[14px]">
             <thead className="bg-paper"><tr className="th">{["Fan", "Show", "Package", "Placed", "Total", "Status"].map((h) => <th key={h} className="px-4 py-3">{h}</th>)}</tr></thead>

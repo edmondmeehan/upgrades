@@ -34,7 +34,7 @@ export async function submitSupport(handle: string, fd: FormData) {
   const details: [string, string][] = [["From", `${name} <${email}>`], ["Topic", TOPICS[topic] ?? "Something else"]];
   if (code) details.push(["Confirmation number", code.toUpperCase()]);
   if (r.order_id) {
-    const { data: o } = await db.from("orders").select("total_cents, created_at, shows(show_date, city, region), order_items(quantity, show_products(products(name)))").eq("id", r.order_id).single();
+    const { data: o } = await db.from("orders").select("total_cents, created_at, shows!orders_show_id_fkey(show_date, city, region), order_items(quantity, show_products(products(name)))").eq("id", r.order_id).single();
     const oo = o as unknown as { total_cents: number; shows: { show_date: string; city: string | null; region: string | null }; order_items: { quantity: number; show_products: { products: { name: string } } }[] } | null;
     if (oo) {
       details.push(["Order", oo.order_items.map((i) => `${i.show_products.products.name} x ${i.quantity}`).join(", ")]);

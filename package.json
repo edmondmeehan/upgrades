@@ -14,6 +14,7 @@
     "@supabase/supabase-js": "^2.117.2",
     "jsqr": "^1.4.0",
     "next": "15.5.26",
+    "passkit-generator": "^3.6.1",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
