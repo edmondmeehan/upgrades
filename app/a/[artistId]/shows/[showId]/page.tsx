@@ -10,6 +10,9 @@ import { updateShow, setShowStatus, deleteShow } from "../../actions";
 import { formatDate } from "@/lib/util";
 import type { Show } from "@/lib/types";
 import { dollars } from "@/lib/packages";
+import { CheckinDetailsPanel } from "@/components/CheckinDetailsPanel";
+import { SHOW_CHECKIN_COLUMNS, type CheckinShow } from "@/lib/checkinEmail";
+import { saveCheckinDetails, sendCheckinNow } from "./checkin-actions";
 
 type P = { params: Promise<{ artistId: string; showId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
 
@@ -24,6 +27,14 @@ export default async function ShowPage({ params, searchParams }: P) {
   const { data: pkgs } = await supabase.from("show_products").select("id, price_cents, capacity, active, products!inner(id, name, archived_at, is_sample)")
     .eq("show_id", showId).eq("products.is_sample", false).is("products.archived_at", null)
     .returns<{ id: string; price_cents: number; capacity: number; active: boolean; products: { id: string; name: string } }[]>();
+  const [{ data: ci }, { data: ciPkgs }, { data: rec }] = await Promise.all([
+    supabase.from("shows").select(SHOW_CHECKIN_COLUMNS).eq("id", showId).single<CheckinShow>(),
+    supabase.from("show_products").select("id, checkin_time, checkin_notes, products!inner(name, archived_at, is_sample)").eq("show_id", showId).eq("active", true)
+      .eq("products.is_sample", false).is("products.archived_at", null)
+      .returns<{ id: string; checkin_time: string | null; checkin_notes: string | null; products: { name: string } }[]>(),
+    supabase.rpc("checkin_recipients", { p_show: showId }),
+  ]);
+  const recipients = (rec ?? []) as { sent: boolean }[];
 
   return (
     <div className="grid max-w-3xl gap-6">
@@ -85,7 +96,12 @@ export default async function ShowPage({ params, searchParams }: P) {
         )}
       </section>
 
-      <p className="help">Check-in details, scanning, and photos for this show arrive in the next phases.</p>
+      {ci && (
+        <CheckinDetailsPanel show={ci} pkgs={(ciPkgs ?? []).map((p) => ({ id: p.id, name: p.products.name, checkin_time: p.checkin_time, checkin_notes: p.checkin_notes }))}
+          save={saveCheckinDetails.bind(null, artistId, showId)} sendNew={sendCheckinNow.bind(null, artistId, showId, "details")}
+          sendUpdate={sendCheckinNow.bind(null, artistId, showId, "update")}
+          recipients={recipients.length} sentCount={recipients.filter((r) => r.sent).length} />
+      )}
 
       {show.status === "draft" && (
         <form action={deleteShow.bind(null, artistId, showId, show.tour_id)}>

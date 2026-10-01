@@ -5,8 +5,8 @@ import { Icon } from "@/components/Icon";
 import { getStripe } from "@/lib/stripe";
 import { fulfillSession, loadOrder } from "@/lib/checkout";
 import { dollars } from "@/lib/packages";
-import { formatTime } from "@/lib/util";
 import { qrSvg } from "@/lib/qr";
+import { checkinNotes, checkinRows, hasCheckinDetails, mapsUrl } from "@/lib/checkinEmail";
 
 export const metadata = { title: "Your order", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -62,7 +62,7 @@ export default async function Order({ params, searchParams }: P) {
               <p className="muted">A confirmation is on its way to {v.order.fans?.email}. You can come back to this order any time at <Link href="/find-order">upgrades.ontour.vip/find-order</Link> with your confirmation number and last name.</p>
               <dl className="grid gap-2 rounded-2xl bg-paper p-4 text-[15px]">
                 {[["Artist", v.artist.name], ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`], ["Show", date], ["Where", `${v.show.venue_name ?? "Venue TBA"}, ${city}`],
-                  ...(v.show.doors_time ? [["Doors", formatTime(v.show.doors_time)!]] : []), ["Total paid", dollars(v.order.total_cents)]].map(([k, val]) => (
+                  ["Total paid", dollars(v.order.total_cents)]].map(([k, val]) => (
                   <div key={k} className="grid grid-cols-[96px_1fr] gap-3"><dt className="th pt-0.5">{k}</dt><dd className="font-semibold">{val}</dd></div>
                 ))}
               </dl>
@@ -71,9 +71,24 @@ export default async function Order({ params, searchParams }: P) {
                   <ul className="grid gap-1 text-[15px]">{v.product.included.map((i) => <li key={i} className="flex gap-2"><span aria-hidden className="font-bold text-violet">✓</span>{i}</li>)}</ul></div>
               )}
             </div>
+            {hasCheckinDetails(v.show) && (() => {
+              const pkg = [{ name: v.product.name, qty: v.hold.quantity, time: v.pkgCheckin.time, notes: v.pkgCheckin.notes }];
+              return (
+                <div className="card grid gap-3 p-6">
+                  <h2>Check-in</h2>
+                  <dl className="grid gap-2 text-[15px]">
+                    {checkinRows(v.show, pkg).map(([k, val]) => (
+                      <div key={k} className="grid grid-cols-[110px_1fr] gap-3"><dt className="th pt-0.5">{k}</dt><dd className="font-semibold">{val}</dd></div>
+                    ))}
+                  </dl>
+                  {checkinNotes(v.show, pkg).map((n) => <p key={n} className="rounded-2xl bg-paper px-4 py-3 text-[14px]">{n}</p>)}
+                  <a href={mapsUrl(v.show)} target="_blank" rel="noopener noreferrer" className="btn btn-ghost justify-self-start">Get directions</a>
+                </div>
+              );
+            })()}
             <div className="card grid gap-3 p-6">
               <h2>{v.passes.length > 1 ? "Your passes" : "Your pass"}</h2>
-              <p className="muted text-[14px]">Show {v.passes.length > 1 ? "these QR codes" : "this QR code"} at VIP check-in, or give your name. You&apos;ll get check-in details, including where and when to arrive, a few days before the show.</p>
+              <p className="muted text-[14px]">Show {v.passes.length > 1 ? "these QR codes" : "this QR code"} at VIP check-in, or give your name. {hasCheckinDetails(v.show) ? "Check-in details are above." : "You'll get check-in details, including where and when to arrive, by email before the show."}</p>
               <ul className="grid gap-4">
                 {v.passes.map((p, i) => (
                   <li key={p.code} className="overflow-hidden rounded-[20px] bg-navy text-white">
