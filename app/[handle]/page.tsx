@@ -15,14 +15,15 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   };
 }
 
-export default async function Storefront({ params }: { params: Promise<{ handle: string }> }) {
+export default async function Storefront({ params, searchParams }: { params: Promise<{ handle: string }>; searchParams: Promise<{ followed?: string; follow_err?: string }> }) {
   const s = await loadStore((await params).handle);
+  const sp = await searchParams;
   if (!s) notFound();
   const t = theme(s);
   const withPkgs = s.shows.filter((sh) => sh.packages.length > 0).length;
   return (
     <div className="min-h-screen bg-white">
-      <StoreHero s={s} t={t} />
+      <StoreHero s={s} t={t} follow={{ state: sp.followed, err: sp.follow_err }} />
       <main className="home-wrap py-8">
         <p className="mb-4 font-bold" aria-live="polite">{s.shows.length} upcoming show{s.shows.length === 1 ? "" : "s"}{withPkgs ? `, ${withPkgs} with VIP upgrades` : ""}</p>
         {s.shows.length === 0 ? (

@@ -72,3 +72,30 @@ export async function startCheckout(fd: FormData) {
   }
   redirect(url);
 }
+
+/** Storefront "Follow" form: adds the fan and emails a confirmation link. */
+export async function followArtist(handle: string, fd: FormData) {
+  const { sendEmail, siteUrl: site } = await import("@/lib/email");
+  const back = (q: string) => `/${handle}?${q}#follow`;
+  if (!(await isHuman(fd))) redirect(back(`follow_err=${encodeURIComponent(HUMAN_FAIL)}`));
+  const db = createAdminClient();
+  if (!db) redirect(back("follow_err=Try+again+soon."));
+  const { data } = await db.rpc("follow_artist", {
+    p_handle: handle, p_email: String(fd.get("email") ?? ""), p_name: String(fd.get("name") ?? ""),
+    p_region: String(fd.get("region") ?? ""), p_ip_hash: await clientKey("follow"),
+  });
+  const r = data as { result: string; token?: string; confirmed?: boolean; artist_name?: string } | null;
+  if (!r || r.result === "throttled") redirect(back("follow_err=Too+many+tries.+Try+again+later."));
+  if (r.result === "bad_email") redirect(back("follow_err=That+email+doesn%27t+look+right."));
+  if (r.result !== "ok") redirect(`/${handle}`);
+  if (!r.confirmed) {
+    await sendEmail({
+      to: String(fd.get("email")).trim(), subject: `Confirm: follow ${r.artist_name} on OnTour Upgrades`,
+      eyebrow: "Follow", title: `Get ${r.artist_name} VIP news first`,
+      body: [`Confirm your email and we'll let you know when ${r.artist_name} announces new shows and VIP upgrades.`],
+      button: { label: "Yes, follow", url: `${site()}/follow/${r.token}` },
+      footnote: "If you didn't ask for this, ignore this email and you won't hear from us.",
+    });
+  }
+  redirect(back(r.confirmed ? "followed=already" : "followed=check"));
+}

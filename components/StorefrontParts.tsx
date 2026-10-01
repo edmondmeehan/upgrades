@@ -5,14 +5,15 @@ import { ShareButtons } from "./ShareButtons";
 import { BuyButton } from "./BuyButton";
 import { HumanCheck } from "./HumanCheck";
 import { BuyFields } from "./BuyFields";
-import { startCheckout } from "@/app/[handle]/actions";
+import { startCheckout, followArtist } from "@/app/[handle]/actions";
+import { US_STATES } from "@/lib/genres";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
 import { cityOf, storeUrl, type Store, type StorePackage, type StoreShow } from "@/lib/storefront";
 
 type Theme = { brand: string; fg: string; accent: string; accentFg: string };
 
-export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compact?: boolean }) {
+export function StoreHero({ s, t, compact = false, follow }: { s: Store; t: Theme; compact?: boolean; follow?: { state?: string; err?: string } }) {
   return (
     <section className="relative overflow-hidden" style={{ background: t.brand, color: t.fg }}>
       {s.header_image_url && (
@@ -53,7 +54,30 @@ export function StoreHero({ s, t, compact = false }: { s: Store; t: Theme; compa
         {!compact && s.verified && <p className="mt-4"><span className="badge" style={{ background: t.accent, color: t.accentFg }}><Icon name="badge" size={14} />Verified artist</span></p>}
         {!compact && s.bio && <p className="mt-4 max-w-[640px] text-[16px] leading-relaxed opacity-90">{s.bio}</p>}
         {!compact && (
-          <div className="mt-6">
+          <details id="follow" className="mt-6 max-w-[520px] scroll-mt-6" open={!!follow?.state || !!follow?.err}>
+            <summary className="inline-flex h-[42px] cursor-pointer list-none items-center gap-2 rounded-full px-5 text-[15px] font-bold [&::-webkit-details-marker]:hidden" style={{ background: t.accent, color: t.accentFg }}>
+              <Icon name="star" size={16} />Follow {s.name}
+            </summary>
+            <div className="mt-3 rounded-2xl bg-white p-4 text-ink shadow-[0_12px_32px_rgba(0,0,0,.18)]">
+              {follow?.state === "check" ? <p className="font-semibold">Check your email to confirm. Then you&apos;ll hear first when {s.name} announces new VIP.</p>
+                : follow?.state === "already" ? <p className="font-semibold">You&apos;re already following {s.name}.</p>
+                : (
+                  <form action={followArtist.bind(null, s.handle)} className="grid gap-2">
+                    <p className="text-[14px]">Get an email when {s.name} announces new shows and VIP upgrades. No spam, unsubscribe any time.</p>
+                    {follow?.err && <p role="alert" className="alert alert-red !py-2 !text-[13px]">{follow.err.slice(0, 120)}</p>}
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_170px]">
+                      <input name="email" type="email" required placeholder="Your email" className="input input-sm" aria-label="Email" />
+                      <select name="region" className="input input-sm" aria-label="Your state" defaultValue=""><option value="">State (optional)</option>{US_STATES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}</select>
+                    </div>
+                    <HumanCheck />
+                    <button className="btn btn-sm justify-self-start">Follow</button>
+                  </form>
+                )}
+            </div>
+          </details>
+        )}
+        {!compact && (
+          <div className="mt-4">
             <ShareButtons tone={t.fg === "#ffffff" ? "dark" : "light"} url={storeUrl(s.handle)} title={`${s.name} VIP upgrades`}
               text={`VIP upgrades for ${s.name} shows are here`} />
           </div>

@@ -86,7 +86,7 @@ Please &amp; Thank You, Inc., 1909 H Street, Sacramento, CA 95811
 
 export const emailConfigured = () => !!process.env.RESEND_API_KEY;
 
-export async function sendEmail({ to, subject, replyTo, ...content }: EmailContent & { to: string | string[]; subject: string; replyTo?: string }): Promise<{ sent: boolean; error?: string }> {
+export async function sendEmail({ to, subject, replyTo, headers, ...content }: EmailContent & { to: string | string[]; subject: string; replyTo?: string; headers?: Record<string, string> }): Promise<{ sent: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || "Please & Thank You <upgrades@ontour.vip>";
   const { html, text } = renderEmail(content);
@@ -98,7 +98,7 @@ export async function sendEmail({ to, subject, replyTo, ...content }: EmailConte
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}), ...(headers ? { headers } : {}) }),
     });
     if (!res.ok) {
       const raw = (await res.text()).slice(0, 300);
@@ -121,7 +121,7 @@ export async function sendEmail({ to, subject, replyTo, ...content }: EmailConte
   }
 }
 
-type Outgoing = EmailContent & { to: string; subject: string; replyTo?: string };
+type Outgoing = EmailContent & { to: string; subject: string; replyTo?: string; headers?: Record<string, string> };
 
 /** Sends many emails through Resend's batch endpoint (100 per request). Returns how many were accepted. */
 export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: number; error?: string }> {
@@ -130,9 +130,9 @@ export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: numb
   if (!key) { messages.forEach((m) => console.log(`[email:dev] to=${m.to} subject: ${m.subject}`)); return { sent: 0, error: "email isn't connected" }; }
   let sent = 0, error: string | undefined;
   for (let i = 0; i < messages.length; i += 100) {
-    const chunk = messages.slice(i, i + 100).map(({ to, subject, replyTo, ...content }) => {
+    const chunk = messages.slice(i, i + 100).map(({ to, subject, replyTo, headers, ...content }) => {
       const { html, text } = renderEmail(content);
-      return { from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) };
+      return { from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}), ...(headers ? { headers } : {}) };
     });
     try {
       const res = await fetch("https://api.resend.com/emails/batch", {
