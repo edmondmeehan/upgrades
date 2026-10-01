@@ -20,6 +20,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   const country = h.get("x-vercel-ip-country")?.toUpperCase() ?? null;
   const cityRaw = h.get("x-vercel-ip-city");
   const city = cityRaw ? decodeURIComponent(cityRaw) : null;
+  const num = (v: string | null) => (v && !Number.isNaN(Number(v)) ? Number(v) : null);
+  const lat = num(h.get("x-vercel-ip-latitude")), lng = num(h.get("x-vercel-ip-longitude"));
   const supabase = await createClient();
   const [{ data }, { user }] = await Promise.all([supabase.rpc("get_discover"), getSession()]);
 
@@ -42,7 +44,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
       </section>
       <main className="home-wrap py-8">
         {deleted && <p className="alert alert-green mb-6">Your account has been deleted.</p>}
-        <Discover data={(data ?? { shows: [], artists: [] }) as DiscoverData} geo={{ region: country === "US" ? region : null, city }} />
+        <Discover data={(data ?? { shows: [], artists: [] }) as DiscoverData} geo={{ region: country === "US" ? region : null, city, country, lat, lng }} />
       </main>
     </div>
   );
