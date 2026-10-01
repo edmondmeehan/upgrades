@@ -14,7 +14,7 @@ export const maxDuration = 300; // cancelling a big show refunds many orders
 
 type P = { params: Promise<{ artistId: string; showId: string }>; searchParams: Promise<{ ok?: string; err?: string; q?: string }> };
 type Row = {
-  id: string; status: string; total_cents: number; created_at: string; confirmation_code: string; fans: { name: string | null; email: string } | null;
+  id: string; status: string; total_cents: number; created_at: string; confirmation_code: string; fans: { name: string | null; email: string; marketing_opt_in_at: string | null } | null;
   order_items: { id: string; quantity: number; refunded_quantity: number; unit_price_cents: number; show_products: { products: { name: string } } | null;
     passes: { id: string; code: string; checked_in_at: string | null; voided_at: string | null }[] }[];
   refunds: { amount_cents: number; created_at: string }[];
@@ -31,7 +31,7 @@ export default async function Orders({ params, searchParams }: P) {
   const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status, tour_id").eq("id", showId).eq("artist_id", artistId).maybeSingle();
   if (!show) notFound();
   const { data } = await supabase.from("orders")
-    .select("id, status, total_cents, created_at, confirmation_code, fans(name, email), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name)), passes(id, code, checked_in_at, voided_at)), refunds(amount_cents, created_at)")
+    .select("id, status, total_cents, created_at, confirmation_code, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name)), passes(id, code, checked_in_at, voided_at)), refunds(amount_cents, created_at)")
     .eq("show_id", showId).eq("is_sample", false).order("created_at", { ascending: false }).returns<Row[]>();
   const term = (q ?? "").trim().toLowerCase();
   const orders = (data ?? []).filter((o) => !term || [o.fans?.name, o.fans?.email, o.confirmation_code].some((v) => v?.toLowerCase().includes(term)));
@@ -66,7 +66,8 @@ export default async function Orders({ params, searchParams }: P) {
               <li key={o.id} className="card grid gap-3 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-extrabold">{o.fans?.name ?? o.fans?.email ?? "Guest"} <span className="font-medium text-mute">{o.fans?.email}</span></p>
+                    <p className="font-extrabold">{o.fans?.name ?? o.fans?.email ?? "Guest"} <span className="font-medium text-mute">{o.fans?.email}</span>
+                      {o.fans?.marketing_opt_in_at && <span className="badge b-lilac ml-2 align-middle">Opted in to news</span>}</p>
                     <p className="help"><span className="font-mono">{o.confirmation_code}</span>, {new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })},{" "}
                       {o.order_items.map((i) => `${i.show_products?.products.name ?? "VIP"} x ${i.quantity}`).join(", ")}</p>
                   </div>

@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { Countdown } from "./Countdown";
 import { ShareButtons } from "./ShareButtons";
 import { BuyButton } from "./BuyButton";
+import { HumanCheck } from "./HumanCheck";
 import { startCheckout } from "@/app/[handle]/actions";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
@@ -111,6 +112,11 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
               )}
             </div>
             {maxQty <= 1 && <input type="hidden" name="qty" value="1" />}
+            <label className="flex items-start gap-2 text-[13px] text-mute">
+              <input type="checkbox" name="marketing" className="check mt-0.5 !size-4" />
+              <span>Email me news and future shows from {s.name}</span>
+            </label>
+            <HumanCheck />
             <BuyButton label={`Get VIP, ${dollars(p.price_cents)}`} bg={t.accent} fg={t.accentFg} />
           </form>
         )}

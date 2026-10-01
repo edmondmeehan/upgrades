@@ -2,6 +2,7 @@ import { Logo } from "@/components/Logo";
 import { Icon } from "@/components/Icon";
 import { SubmitButton } from "@/components/SubmitButton";
 import { findOrder } from "./actions";
+import { HumanCheck } from "@/components/HumanCheck";
 
 export const metadata = { title: "Find my order", robots: { index: false } };
 
@@ -27,6 +28,7 @@ export default async function FindOrder({ searchParams }: { searchParams: Promis
           <label className="field"><span>Last name, email, or billing ZIP</span>
             <input name="proof" required className="input" placeholder="Rivera" autoComplete="family-name" />
             <small>Use the details from checkout.</small></label>
+          <HumanCheck />
           <SubmitButton size="lg" pendingText="Looking…">Find my order</SubmitButton>
         </form>
         <p className="help text-center">Can&apos;t find your confirmation number? <a href="https://help.please.co">Contact Fan Support</a> with the email you used at checkout.</p>

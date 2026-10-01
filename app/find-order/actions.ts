@@ -3,11 +3,13 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isHuman, HUMAN_FAIL } from "@/lib/human";
 
 export async function findOrder(fd: FormData) {
   const code = String(fd.get("code") ?? "").trim(), proof = String(fd.get("proof") ?? "").trim();
   const back = (err: string) => `/find-order?err=${encodeURIComponent(err)}&code=${encodeURIComponent(code)}`;
   if (!code || !proof) redirect(back("Enter your confirmation number and your last name, email, or billing ZIP."));
+  if (!(await isHuman(fd))) redirect(back(HUMAN_FAIL));
   const db = createAdminClient();
   if (!db) redirect(back("Order lookup isn't available right now."));
   const h = await headers();

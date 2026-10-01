@@ -20,9 +20,16 @@ export async function requireUser() {
   return s as { supabase: typeof s.supabase; user: NonNullable<typeof s.user>; profile: Profile };
 }
 
-export async function requireSuperAdmin() {
+/** P&T admins must be signed in with their authenticator app (two-step) before using admin powers. */
+async function requireAdminTwoStep(supabase: Awaited<ReturnType<typeof createClient>>, next: string) {
+  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (data?.currentLevel !== "aal2") redirect(`/admin-mfa?next=${encodeURIComponent(next)}`);
+}
+
+export async function requireSuperAdmin(next = "/admin") {
   const s = await requireUser();
   if (!s.profile.is_super_admin) notFound();
+  await requireAdminTwoStep(s.supabase, next);
   return s;
 }
 
@@ -40,6 +47,7 @@ export async function requireArtist(artistId: string, allowed?: MemberRole[]) {
   const role: MemberRole | "admin" | null = m?.role ?? (s.profile.is_super_admin ? "admin" : null);
   if (!role) notFound();
   if (allowed && role !== "admin" && !allowed.includes(role)) notFound();
+  if (role === "admin") await requireAdminTwoStep(s.supabase, `/a/${artistId}`);
   return { ...s, artist, role };
 }
 

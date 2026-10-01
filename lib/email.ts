@@ -108,6 +108,7 @@ export async function sendEmail({ to, subject, replyTo, ...content }: EmailConte
       if (res.status === 401 || res.status === 403) hint = /domain/i.test(body) ? " (the sending domain isn't verified in Resend)" : " (Resend rejected the API key or from-address)";
       if (res.status === 422) hint = " (check the from-address is on your verified domain, e.g. Please & Thank You <upgrades@ontour.vip>)";
       console.error(`[email] Resend ${res.status}${hint} ${body}`);
+      import("@/lib/health").then((m) => m.markError("email", `Resend ${res.status}: ${body}`)).catch(() => null);
       return { sent: false, error: `Resend said: ${body}${hint}` };
     }
     const { id } = (await res.json().catch(() => ({}))) as { id?: string };

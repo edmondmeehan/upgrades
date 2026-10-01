@@ -70,6 +70,12 @@ App emails (invites, verification, approvals) and Supabase sign-in emails go thr
 Vercel Cron calls `/api/cron/daily-sales` at 12:00 UTC (8 AM Eastern in summer, 7 AM in winter) and emails yesterday's sales to every P&T admin with it switched on.
 Add `CRON_SECRET` in Vercel (any long random string); Vercel sends it with each cron call. Admins can turn it off or send a preview under P&T admin, then Admins.
 
+### 8. Security
+- **Admin two-step sign-in:** every P&T admin sets up an authenticator app on their first visit to P&T admin, then enters a code each sign-in. Lost phone: delete their factor in Supabase, Authentication, Users.
+- **Human check (Cloudflare Turnstile, free):** create a widget at dash.cloudflare.com, Turnstile, for upgrades.ontour.vip, then add `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel. Off until both are set. Covers checkout, sign-up, Find my order and fan support.
+- **Checkout limit:** at most 3 unpaid checkouts open per visitor at a time.
+- **Alerts:** admins are emailed when Stripe webhooks, the daily report, check-in emails or email sending fail (once an hour per job). See System health in P&T admin.
+
 ### Local development
 ```bash
 cp .env.example .env.local   # fill in Supabase values

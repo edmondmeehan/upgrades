@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, siteUrl } from "@/lib/email";
 import { TOPICS } from "@/lib/support";
+import { isHuman, HUMAN_FAIL } from "@/lib/human";
 
 
 export async function submitSupport(handle: string, fd: FormData) {
@@ -15,6 +16,7 @@ export async function submitSupport(handle: string, fd: FormData) {
   const keep = `order=${encodeURIComponent(code)}`;
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !message) redirect(back(`${keep}&err=${encodeURIComponent("Add your name, a valid email, and your message.")}`));
 
+  if (!(await isHuman(fd))) redirect(back(`${keep}&err=${encodeURIComponent(HUMAN_FAIL)}`));
   const db = createAdminClient();
   if (!db) redirect(back(`${keep}&err=${encodeURIComponent("Support isn't available right now.")}`));
   const ip = ((await headers()).get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";

@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { PhotoUploader } from "@/components/PhotoUploader";
 import { formatDate } from "@/lib/util";
 import { siteUrl } from "@/lib/email";
-import { registerPhotos, deletePhoto, movePhoto, sendPhotos } from "../actions";
+import { registerPhotos, deletePhoto, movePhoto, sendPhotos, extendGallery } from "../actions";
 
 export const metadata = { title: "Show photos" };
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function ShowPhotos({ params, searchParams }: P) {
   const [{ data: photos }, { data: buyersRaw }, { data: gallery }, { data: opens }] = await Promise.all([
     supabase.from("show_photos").select("id, path, thumb_path").eq("show_id", showId).order("position").order("created_at").returns<Photo[]>(),
     supabase.rpc("photo_buyers", { p_show: showId }),
-    supabase.from("photo_galleries").select("token, first_sent_at").eq("show_id", showId).maybeSingle(),
+    supabase.from("photo_galleries").select("token, first_sent_at, expires_at").eq("show_id", showId).maybeSingle(),
     supabase.from("photo_deliveries").select("opened_at").eq("show_id", showId).not("opened_at", "is", null),
   ]);
   const buyers = (buyersRaw ?? []) as Buyer[];
@@ -58,6 +58,12 @@ export default async function ShowPhotos({ params, searchParams }: P) {
             </form>
           )}
         </div>
+        {gallery?.expires_at && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3 text-[14px]">
+            <span>{new Date(gallery.expires_at) < new Date() ? <b className="text-rope">The fan gallery link has expired.</b> : <>Fans can open the gallery until <b>{new Date(gallery.expires_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</b>.</>}</span>
+            <form action={extendGallery.bind(null, artistId, showId)}><SubmitButton size="sm" variant="ghost">Keep it open 90 more days</SubmitButton></form>
+          </div>
+        )}
         {gallery?.first_sent_at && <p className="help">Gallery link: <a href={`${siteUrl()}/photos/${gallery.token}`} target="_blank" rel="noopener noreferrer">{siteUrl()}/photos/{gallery.token}</a>. Photos you add later show up there straight away.</p>}
       </section>
 

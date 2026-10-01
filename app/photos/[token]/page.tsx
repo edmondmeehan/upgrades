@@ -13,8 +13,18 @@ export default async function Gallery({ params, searchParams }: P) {
   const { o } = await searchParams;
   const db = createAdminClient();
   if (!db || !/^[0-9a-f]{36}$/.test(token)) notFound();
-  const { data: g } = await db.from("photo_galleries").select("show_id, artist_id, first_sent_at").eq("token", token).maybeSingle();
+  const { data: g } = await db.from("photo_galleries").select("show_id, artist_id, first_sent_at, expires_at").eq("token", token).maybeSingle();
   if (!g?.first_sent_at) notFound();
+  if (g.expires_at && new Date(g.expires_at) < new Date()) {
+    const { data: a } = await db.from("artists").select("name, handle").eq("id", g.artist_id).single();
+    return (
+      <main className="mx-auto grid min-h-[60vh] max-w-[480px] content-center gap-3 px-4 py-16 text-center">
+        <h1 className="text-[26px]">This photo gallery has expired</h1>
+        <p className="muted">Photo links stay open for 90 days after the show. If you still need your photos, ask the {a?.name ?? "artist's"} team to reopen it.</p>
+        {a && <a href={`/${a.handle}/support`} className="btn justify-self-center">Contact {a.name}</a>}
+      </main>
+    );
+  }
   const [{ data: show }, { data: artist }, { data: photos }] = await Promise.all([
     db.from("shows").select("id, show_date, city, region, venue_name").eq("id", g.show_id).single(),
     db.from("artists").select("handle, name").eq("id", g.artist_id).single(),

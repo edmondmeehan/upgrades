@@ -78,3 +78,13 @@ export async function sendPhotos(artistId: string, showId: string) {
   revalidatePath(back);
   redirect(withMsg(back, sent ? "ok" : "err", sent ? `Photos sent to ${sent} fan${sent === 1 ? "" : "s"}.` : `The emails didn't send (${error ?? "unknown error"}).`));
 }
+
+/** Keeps the fan gallery link open for another 90 days from today. */
+export async function extendGallery(artistId: string, showId: string) {
+  await requireArtist(artistId, ["owner", "rep"]);
+  const db = createAdminClient();
+  const until = new Date(Date.now() + 90 * 86400000).toISOString();
+  if (db) await db.from("photo_galleries").update({ expires_at: until }).eq("show_id", showId).eq("artist_id", artistId);
+  revalidatePath(`/a/${artistId}/photos/${showId}`);
+  redirect(withMsg(`/a/${artistId}/photos/${showId}`, "ok", "Gallery link extended for 90 more days."));
+}

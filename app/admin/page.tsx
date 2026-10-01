@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { StatusPill } from "@/components/StatusPill";
 import { PageHead } from "@/components/Shell";
+import { SystemHealth } from "@/components/SystemHealth";
 import { formatDateTime, pct } from "@/lib/util";
 import type { Artist, ArtistStatus } from "@/lib/types";
 
@@ -14,6 +15,7 @@ const FILTERS: { key: string; label: string }[] = [
 
 export default async function Admin({ searchParams }: P) {
   const { supabase } = await requireSuperAdmin();
+  const { data: runs } = await supabase.from("system_runs").select("job, last_ok_at, last_error_at, last_error");
   const { status = "pending", q = "" } = await searchParams;
 
   let query = supabase.from("artists").select("*, verification_submissions(created_at, proof_method, third_party_confirmed_at, status)")
@@ -28,6 +30,7 @@ export default async function Admin({ searchParams }: P) {
   return (
     <>
       <PageHead title="Artists" eyebrow="P&T admin" />
+      <SystemHealth runs={runs ?? []} />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <nav className="pill-nav" aria-label="Filter by status">
           {FILTERS.map((f) => (

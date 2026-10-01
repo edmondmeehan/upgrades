@@ -13,13 +13,15 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
   const { supabase, user } = await requireSuperAdmin();
   const { data: me } = await supabase.from("profiles").select("daily_report").eq("id", user.id).single<{ daily_report: boolean }>();
   const { ok, err } = await searchParams;
-  const [{ data: admins }, { data: invites }] = await Promise.all([
+  const [{ data: admins }, { data: invites }, { data: mfa }] = await Promise.all([
     supabase.from("profiles").select("id, name, email, created_at").eq("is_super_admin", true).order("created_at")
       .returns<{ id: string; name: string | null; email: string; created_at: string }[]>(),
     supabase.from("admin_invitations").select("id, email, token, expires_at").is("accepted_at", null).is("revoked_at", null)
       .gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false })
       .returns<{ id: string; email: string; token: string; expires_at: string }[]>(),
+    supabase.rpc("admin_mfa_status"),
   ]);
+  const twoStep = new Map(((mfa ?? []) as { user_id: string; has_mfa: boolean }[]).map((m) => [m.user_id, m.has_mfa]));
 
   return (
     <>
@@ -38,6 +40,7 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="badge b-verified">Admin</span>
+                  {twoStep.get(a.id) ? <span className="badge b-approved">Two-step on</span> : <span className="badge b-pending" title="They'll be asked to set it up the next time they open P&T admin">Two-step not set up</span>}
                   {a.id !== user.id && (
                     <form action={removeAdmin.bind(null, a.id)}>
                       <SubmitButton variant="ghost" size="sm" confirm={`Remove admin access for ${a.email}? They keep any artist accounts they're on.`}>Remove</SubmitButton>

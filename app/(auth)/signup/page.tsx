@@ -3,6 +3,7 @@ import { AuthShell } from "../AuthShell";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
 import { signUp } from "../actions";
+import { HumanCheck } from "@/components/HumanCheck";
 
 export const metadata = { title: "Create account" };
 
@@ -27,6 +28,7 @@ export default async function Signup({ searchParams }: { searchParams: Promise<{
             those fees are my cost, and refunds and chargebacks come out of my own Stripe balance.
           </span>
         </label>
+        <HumanCheck />
         <SubmitButton size="lg" block pendingText="Creating account…">Create account</SubmitButton>
       </form>
       <p className="help text-center">Already have an account? <Link href={`/login?next=${encodeURIComponent(next)}`}>Sign in</Link></p>

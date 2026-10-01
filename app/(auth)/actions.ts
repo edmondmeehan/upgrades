@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { isHuman, HUMAN_FAIL } from "@/lib/human";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/email";
 import { cleanError, withMsg } from "@/lib/util";
@@ -41,6 +42,7 @@ export async function signUp(fd: FormData) {
   const back = `/signup?next=${encodeURIComponent(next)}`;
   if (password.length < 8) redirect(withMsg(back, "err", "Use at least 8 characters for your password."));
   if (fd.get("terms") !== "on") redirect(withMsg(back, "err", "Accept the artist terms to continue."));
+  if (!(await isHuman(fd))) redirect(withMsg(back, "err", HUMAN_FAIL));
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email, password,

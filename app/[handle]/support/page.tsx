@@ -5,6 +5,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { loadStore, theme } from "@/lib/storefront";
 import { submitSupport } from "./actions";
 import { TOPICS } from "@/lib/support";
+import { HumanCheck } from "@/components/HumanCheck";
 
 export const metadata = { title: "Fan support", robots: { index: false } };
 type P = { params: Promise<{ handle: string }>; searchParams: Promise<{ order?: string; err?: string; sent?: string; topic?: string }> };
@@ -46,6 +47,7 @@ export default async function Support({ params, searchParams }: P) {
                 </select></label>
               <label className="field"><span>Message</span><textarea name="message" required maxLength={4000} className="input" placeholder="How can the team help?" /></label>
               <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-0 w-0 opacity-0" />
+              <HumanCheck />
               <SubmitButton size="lg" pendingText="Sending…">Send message</SubmitButton>
             </form>
             <p className="help text-center">Lost your passes? <Link href="/find-order">Find your order</Link> with your confirmation number and last name.</p>

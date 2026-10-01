@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { siteUrl } from "@/lib/email";
+import { clientKey, isHuman, HUMAN_FAIL } from "@/lib/human";
 
 type Hold = { hold_id: string; quantity: number; unit_price_cents: number; service_fee_cents: number; stripe_account_id: string;
   artist_name: string; handle: string; show_slug: string; product_name: string; image_url: string | null;
@@ -15,8 +16,12 @@ export async function startCheckout(fd: FormData) {
   const stripe = getStripe(), db = createAdminClient();
   if (!stripe || !db) redirect(back("Checkout isn't available right now. Try again soon."));
 
+  if (!(await isHuman(fd))) redirect(back(HUMAN_FAIL));
   const qty = Math.floor(Number(fd.get("qty") ?? 1));
-  const { data, error } = await db.rpc("create_checkout_hold", { p_show_product: sp, p_qty: qty, p_code: String(fd.get("code") ?? "") || null });
+  const { data, error } = await db.rpc("create_checkout_hold", {
+    p_show_product: sp, p_qty: qty, p_code: String(fd.get("code") ?? "") || null,
+    p_client: await clientKey("checkout"), p_marketing: fd.get("marketing") === "on",
+  });
   if (error || !data) redirect(back(error?.message?.replace(/^.*?: /, "") || "Something went wrong. Try again."));
   const h = data as Hold;
 

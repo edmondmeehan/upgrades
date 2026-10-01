@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { getStripe, retrieveAccount, saveAccount, saveCard } from "@/lib/stripe";
 import { fulfillSession } from "@/lib/checkout";
 import { syncChargeRefunds, syncDispute } from "@/lib/refunds";
+import { markError, markOk } from "@/lib/health";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -16,6 +17,12 @@ const accountEventsSecret = () => process.env.STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECR
  *  - thin Accounts v2 events (v2.core.account...) signed with STRIPE_ACCOUNT_EVENTS_WEBHOOK_SECRET
  */
 export async function POST(req: NextRequest) {
+  const res = await handle(req);
+  if (res.status < 300) await markOk("stripe-webhook").catch(() => null);
+  return res;
+}
+
+async function handle(req: NextRequest) {
   const stripe = getStripe();
   const db = createAdminClient();
   if (!stripe || !db) return NextResponse.json({ error: "not configured" }, { status: 503 });
@@ -80,6 +87,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (e) {
     console.error("[stripe webhook]", e);
+    await markError("stripe-webhook", e).catch(() => null);
     return NextResponse.json({ error: "handler failed" }, { status: 500 });
   }
 }
