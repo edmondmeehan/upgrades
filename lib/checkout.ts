@@ -11,7 +11,7 @@ export type OrderView = {
   show: CheckinShow & { slug: string };
   product: { name: string; includes_photo: boolean; included: string[]; questions?: unknown };
   pkgCheckin: { time: string | null; notes: string | null };
-  order: { id: string; status: string; is_comp: boolean; answers?: Record<string, string> | null; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
+  order: { id: string; status: string; is_comp: boolean; currency?: string; answers?: Record<string, string> | null; confirmation_code: string; total_cents: number; created_at: string; fans: { email: string; name: string | null } | null } | null;
   passes: { id: string; code: string; attendee_name: string | null; attendee_email: string | null; checked_in_at: string | null; answers?: Record<string, string> | null }[];
   photos: { url: string } | null; // gallery link, once the artist has sent photos
 };
@@ -29,7 +29,7 @@ export async function loadOrder(holdId: string): Promise<OrderView | null> {
   ]);
   let order = null, passes: OrderView["passes"] = [];
   if (hold.order_id) {
-    const { data: o } = await db.from("orders").select("id, status, is_comp, answers, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
+    const { data: o } = await db.from("orders").select("id, status, is_comp, currency, answers, confirmation_code, total_cents, created_at, fans(email, name)").eq("id", hold.order_id).single();
     order = o as OrderView["order"];
     const { data: items } = await db.from("order_items").select("id").eq("order_id", hold.order_id);
     const { data: ps } = await db.from("passes").select("id, code, attendee_name, attendee_email, checked_in_at, answers").in("order_item_id", (items ?? []).map((i) => i.id)).is("voided_at", null).order("code");
@@ -106,7 +106,7 @@ async function sendConfirmation(holdId: string) {
       ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`],
       ["Show", `${date}, ${city}`],
       ["Venue", v.show.venue_name ?? "TBA"],
-      ...(v.order.is_comp ? [] : [["Total paid", dollars(v.order.total_cents)] as [string, string]]),
+      ...(v.order.is_comp ? [] : [["Total paid", dollars(v.order.total_cents, v.order.currency)] as [string, string]]),
       [v.passes.length > 1 ? "Pass codes" : "Pass code", v.passes.map((p) => p.code).join(", ")],
       ...(late ? [...checkinRows(v.show, pkg).filter(([k]) => k !== "Date" && k !== "Venue"), ["Directions", mapsUrl(v.show)] as [string, string]] : []),
     ],

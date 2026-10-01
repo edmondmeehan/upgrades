@@ -1,9 +1,10 @@
 "use client";
+import { currencySymbol } from "@/lib/money";
 import { useMemo, useState } from "react";
 import { SubmitButton } from "./SubmitButton";
 
-export type GridPackage = { id: string; name: string; default_price: number | null; default_capacity: number | null };
-export type GridShow = { id: string; date: string; label: string; venue: string | null; past: boolean };
+export type GridPackage = { id: string; name: string; default_price: number | null; default_capacity: number | null; currency_prices?: Record<string, number> };
+export type GridShow = { id: string; date: string; label: string; venue: string | null; past: boolean; currency?: string };
 export type GridCell = { applied: boolean; price: string; capacity: string; sold: number }; // "" = default
 
 const k = (s: string, p: string) => `${s}:${p}`;
@@ -90,10 +91,10 @@ export function InventoryGrid({ action, packages, shows, initial }: {
                         {c.applied && (
                           <>
                             <span className="relative block">
-                              {mode === "price" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-mute">$</span>}
+                              {mode === "price" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-mute">{currencySymbol(s.currency)}</span>}
                               <input className={`input input-sm w-28 ${mode === "price" ? "!pl-6" : ""} ${custom ? "!border-violet" : ""}`} inputMode={mode === "price" ? "decimal" : "numeric"}
                                 aria-label={`${mode === "price" ? "Price" : "Quantity"} for ${p.name} at ${s.label}`}
-                                placeholder={mode === "price" ? String((p.default_price ?? 0) / 100) : String(p.default_capacity ?? "")}
+                                placeholder={mode === "price" ? String(((s.currency && s.currency !== "usd" ? p.currency_prices?.[s.currency] : undefined) ?? p.default_price ?? 0) / 100) : String(p.default_capacity ?? "")}
                                 value={val} onChange={(e) => set(s.id, p.id, mode === "price" ? { price: e.target.value } : { capacity: e.target.value.replace(/\D/g, "") })} />
                             </span>
                             <span className="mt-1 block text-[12px] text-mute">{c.sold} sold, {Math.max(0, cap - c.sold)} left</span>

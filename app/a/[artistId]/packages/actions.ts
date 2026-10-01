@@ -30,6 +30,7 @@ export async function savePackage(artistId: string, productId: string | null, fd
     default_price_cents: cents(String(fd.get("default_price") ?? "")),
     default_capacity: Math.floor(Number(fd.get("default_capacity"))),
     questions: (() => { try { return sanitizeQuestions(JSON.parse(String(fd.get("questions") ?? "[]"))); } catch { return []; } })(),
+    currency_prices: Object.fromEntries(["gbp", "eur", "cad", "aud"].map((c) => [c, cents(String(fd.get(`default_price_${c}`) ?? ""))]).filter(([, v]) => typeof v === "number" && (v as number) > 0)),
   };
   if (!Number.isFinite(product.default_price_cents) || product.default_price_cents < 100) redirect(withMsg(back, "err", "Set a default price of at least $1."));
   if (!Number.isFinite(product.default_capacity) || product.default_capacity < 1) redirect(withMsg(back, "err", "Set a default quantity of at least 1."));

@@ -1,14 +1,15 @@
 "use client";
 import Link from "next/link";
+import { dollars } from "@/lib/packages";
 import { useMemo, useState } from "react";
 import { GENRES, US_STATES } from "@/lib/genres";
 import { DEFAULT_ACCENT, DEFAULT_BRAND, isHex, safeAccent, textOn } from "@/lib/color";
 
 type A = { name: string; handle: string; genres: string[]; avatar_url: string | null; header_image_url: string | null; brand_color: string | null; accent_color: string | null; tagline?: string | null; upcoming?: number };
-type S = { slug: string; date: string; city: string | null; region: string | null; country: string; venue: string | null; doors: string | null; tonight: boolean; from_cents: number; artist: A };
+type S = { slug: string; date: string; city: string | null; region: string | null; country: string; venue: string | null; doors: string | null; tonight: boolean; from_cents: number; currency?: string; artist: A };
 export type DiscoverData = { shows: S[]; artists: A[] };
 
-const money = (c: number) => `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: c % 100 ? 2 : 0 })}`;
+const money = (c: number, cur = "usd") => dollars(c, cur);
 const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
 const stateName = (code: string | null) => US_STATES.find(([c]) => c === code)?.[1] ?? code ?? "";
 const colors = (a: A) => { const b = isHex(a.brand_color) ? a.brand_color : DEFAULT_BRAND; const acc = safeAccent(b, isHex(a.accent_color) ? a.accent_color : DEFAULT_ACCENT); return { b, fg: textOn(b), acc }; };
@@ -32,7 +33,7 @@ function ShowTile({ s }: { s: S }) {
         <p className="eyebrow">{fmt(s.date)}</p>
         <p className="text-[17px] font-extrabold leading-tight">{s.city}{s.region ? `, ${s.region}` : ""}</p>
         <p className="truncate text-[14px] text-mute">{s.venue}</p>
-        <p className="mt-2 text-[14px] font-bold text-violet">VIP from {money(s.from_cents)}</p>
+        <p className="mt-2 text-[14px] font-bold text-violet">VIP from {money(s.from_cents, s.currency)}</p>
       </div>
     </Link>
   );

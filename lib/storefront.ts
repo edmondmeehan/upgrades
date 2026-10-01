@@ -8,7 +8,7 @@ export type StorePackage = {
   price_cents: number; presale: boolean; on_sale_at: string | null; off_sale_at: string | null; remaining: number;
   questions?: import("@/lib/questions").Question[];
 };
-export type StoreShow = { slug: string; date: string; venue: string; city: string; region: string | null; country: string; tour: string; fee_bps?: number; packages: StorePackage[] };
+export type StoreShow = { slug: string; date: string; venue: string; city: string; region: string | null; country: string; tour: string; fee_bps?: number; currency?: string; packages: StorePackage[] };
 export type Store = {
   name: string; handle: string; website: string | null; bio: string | null; tagline: string | null; verified: boolean;
   brand_color: string | null; accent_color: string | null; header_image_url: string | null; avatar_url: string | null;

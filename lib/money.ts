@@ -1,8 +1,18 @@
-const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const usd0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+export const CURRENCIES = { usd: "US dollars", gbp: "British pounds", eur: "Euros", cad: "Canadian dollars", aud: "Australian dollars" } as const;
+export type Currency = keyof typeof CURRENCIES;
+export const isCurrency = (c: unknown): c is Currency => typeof c === "string" && c in CURRENCIES;
 
-export const money = (cents: number | null | undefined) => usd.format((Number(cents) || 0) / 100);
-export const money0 = (cents: number | null | undefined) => usd0.format((Number(cents) || 0) / 100);
+const cache = new Map<string, Intl.NumberFormat>();
+const fmt = (cur: string, whole: boolean) => {
+  const k = `${cur}:${whole}`;
+  if (!cache.has(k)) cache.set(k, new Intl.NumberFormat(cur === "gbp" ? "en-GB" : cur === "eur" ? "en-IE" : cur === "cad" ? "en-CA" : cur === "aud" ? "en-AU" : "en-US",
+    { style: "currency", currency: cur.toUpperCase(), ...(whole ? { maximumFractionDigits: 0 } : {}) }));
+  return cache.get(k)!;
+};
+
+export const money = (cents: number | null | undefined, cur: string = "usd") => fmt(isCurrency(cur) ? cur : "usd", false).format((Number(cents) || 0) / 100);
+export const money0 = (cents: number | null | undefined, cur: string = "usd") => fmt(isCurrency(cur) ? cur : "usd", true).format((Number(cents) || 0) / 100);
+export const currencySymbol = (cur: string = "usd") => ({ usd: "$", gbp: "£", eur: "€", cad: "C$", aud: "A$" } as Record<string, string>)[cur] ?? "$";
 export const moneyCsv = (cents: number | null | undefined) => ((Number(cents) || 0) / 100).toFixed(2);
 export const rate = (num: number, den: number) => (den > 0 ? `${Math.round((num / den) * 100)}%` : "—");
 

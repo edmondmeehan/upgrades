@@ -6,7 +6,7 @@ import { siteUrl } from "@/lib/email";
 import { clientKey, isHuman, HUMAN_FAIL } from "@/lib/human";
 import { readAnswers, sanitizeQuestions } from "@/lib/questions";
 
-type Hold = { hold_id: string; quantity: number; unit_price_cents: number; service_fee_cents: number; stripe_account_id: string;
+type Hold = { hold_id: string; currency?: string; quantity: number; unit_price_cents: number; service_fee_cents: number; stripe_account_id: string;
   artist_name: string; handle: string; show_slug: string; product_name: string; image_url: string | null;
   city: string | null; region: string | null; venue: string | null; show_date: string };
 
@@ -38,7 +38,7 @@ export async function startCheckout(fd: FormData) {
     const line: import("stripe").Stripe.Checkout.SessionCreateParams.LineItem[] = [{
       quantity: h.quantity,
       price_data: {
-        currency: "usd", unit_amount: h.unit_price_cents,
+        currency: h.currency ?? "usd", unit_amount: h.unit_price_cents,
         product_data: {
           name: `${h.product_name}: ${h.artist_name}`,
           description: `${date}, ${where}${h.venue ? ` at ${h.venue}` : ""}. VIP upgrade only; concert ticket sold separately.`,
@@ -47,7 +47,7 @@ export async function startCheckout(fd: FormData) {
       },
     }];
     if (h.service_fee_cents > 0) {
-      line.push({ quantity: 1, price_data: { currency: "usd", unit_amount: h.service_fee_cents, product_data: { name: "Service fee" } } });
+      line.push({ quantity: 1, price_data: { currency: h.currency ?? "usd", unit_amount: h.service_fee_cents, product_data: { name: "Service fee" } } });
     }
     const { data: art } = await db.from("artists").select("collect_tax").eq("handle", h.handle).single<{ collect_tax: boolean }>();
     const params: import("stripe").Stripe.Checkout.SessionCreateParams = {

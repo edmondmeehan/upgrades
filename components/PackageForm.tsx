@@ -4,18 +4,21 @@ import { SubmitButton } from "./SubmitButton";
 import { ImageUpload } from "./ImageUpload";
 import type { PackageTemplate } from "@/lib/packages";
 import { QuestionsEditor } from "./QuestionsEditor";
+import { currencySymbol } from "@/lib/money";
 import type { Question } from "@/lib/questions";
 
 export type FormShow = {
   id: string; date: string; label: string; venue: string | null; tour_id: string; tour_name: string; past: boolean;
   selected: boolean; price: string; capacity: string; sold: number; // price/capacity "" = use the package default
+  currency?: string;
 };
 
 type Props = {
   action: (fd: FormData) => void | Promise<void>;
   artistId: string;
   initial: { kind: string; name: string; description: string; included: string[]; includes_photo: boolean; image_url: string | null;
-    on_sale_at: string | null; off_sale_at: string | null; presale_code: string | null; default_price: string; default_capacity: string; questions?: Question[] };
+    on_sale_at: string | null; off_sale_at: string | null; presale_code: string | null; default_price: string; default_capacity: string; questions?: Question[];
+    currency_prices?: Record<string, string> };
   shows: FormShow[];
   template?: PackageTemplate;
   submitLabel: string;
@@ -32,6 +35,11 @@ const fmtDate = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString("en
 export function PackageForm({ action, artistId, initial, shows: startShows, submitLabel }: Props) {
   const [shows, setShows] = useState(startShows);
   const [defPrice, setDefPrice] = useState(initial.default_price);
+  // Other currencies this artist's shows use (UK, EU, etc.): each gets its own default price.
+  const otherCurs = [...new Set(shows.map((s) => s.currency ?? "usd"))].filter((c) => c !== "usd");
+  const [curPrices, setCurPrices] = useState<Record<string, string>>(initial.currency_prices ?? {});
+  const sym = (c?: string) => currencySymbol(c ?? "usd");
+  const defFor = (c?: string) => (c && c !== "usd" ? curPrices[c] || defPrice : defPrice);
   const [defCap, setDefCap] = useState(initial.default_capacity);
   const [onSale, setOnSale] = useState(toLocal(initial.on_sale_at));
   const [timing, setTiming] = useState<"now" | "scheduled">(initial.on_sale_at && new Date(initial.on_sale_at) > new Date() ? "scheduled" : "now");
@@ -86,6 +94,13 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
               <label className="field"><span>Default price</span>
                 <span className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-mute">$</span>
                   <input className="input w-36 !pl-8" name="default_price" inputMode="decimal" required value={defPrice} onChange={(e) => setDefPrice(e.target.value)} /></span></label>
+              {otherCurs.map((c) => (
+                <label key={c} className="field"><span>Default price in {c.toUpperCase()}</span>
+                  <span className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-mute">{sym(c)}</span>
+                    <input className="input w-36 !pl-9" name={`default_price_${c}`} inputMode="decimal" placeholder={defPrice || "0"} value={curPrices[c] ?? ""} onChange={(e) => setCurPrices((p) => ({ ...p, [c]: e.target.value }))} /></span>
+                  {!curPrices[c] && <small className="!text-rope">Set a {c.toUpperCase()} price, or {c.toUpperCase()} shows use the same number as your default.</small>}
+                </label>
+              ))}
               <label className="field"><span>Default quantity per show</span>
                 <input className="input w-36" name="default_capacity" inputMode="numeric" required value={defCap} onChange={(e) => setDefCap(e.target.value.replace(/\D/g, ""))} /></label>
               <p className="help sm:pb-3">
@@ -119,9 +134,9 @@ export function PackageForm({ action, artistId, initial, shows: startShows, subm
                               <span><span className="font-semibold text-ink">{s.label}</span><span className="block text-[13px] text-mute">{fmtDate(s.date)}{s.venue ? `, ${s.venue}` : ""}{s.past ? " (past)" : ""}</span></span>
                             </label>
                           </td>
-                          <td className="px-3 py-2"><span className="relative inline-block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-mute">$</span>
+                          <td className="px-3 py-2"><span className="relative inline-block"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-mute">{sym(s.currency)}</span>
                             <input aria-label={`Price for ${s.label}`} className={`input input-sm w-28 !pl-6 ${s.price ? "!border-violet" : ""}`} inputMode="decimal" disabled={!s.selected}
-                              placeholder={defPrice || "0"} value={s.price} onChange={(e) => set(s.id, { price: e.target.value })} /></span></td>
+                              placeholder={defFor(s.currency) || "0"} value={s.price} onChange={(e) => set(s.id, { price: e.target.value })} /></span></td>
                           <td className="px-3 py-2"><input aria-label={`Quantity for ${s.label}`} className={`input input-sm w-24 ${s.capacity ? "!border-violet" : ""}`} inputMode="numeric" disabled={!s.selected}
                               placeholder={defCap || "0"} value={s.capacity} onChange={(e) => set(s.id, { capacity: e.target.value.replace(/\D/g, "") })} /></td>
                           <td className="px-3 py-2 text-[13px]">

@@ -7,12 +7,12 @@ import { dollars } from "@/lib/packages";
 type Item = { id: string; quantity: number; refunded_quantity: number; unit_price_cents: number; name: string };
 type OrderRow = {
   id: string; artist_id: string; show_id: string; status: string; subtotal_cents: number; service_fee_cents: number; total_cents: number;
-  stripe_charge_id: string | null; confirmation_code: string; fans: { email: string; name: string | null } | null;
+  stripe_charge_id: string | null; confirmation_code: string; currency?: string; fans: { email: string; name: string | null } | null;
 };
 
 async function loadForRefund(orderId: string) {
   const db = createAdminClient()!;
-  const { data: o } = await db.from("orders").select("id, artist_id, show_id, status, subtotal_cents, service_fee_cents, total_cents, stripe_charge_id, confirmation_code, fans(email, name)")
+  const { data: o } = await db.from("orders").select("id, artist_id, show_id, status, subtotal_cents, service_fee_cents, total_cents, stripe_charge_id, confirmation_code, currency, fans(email, name)")
     .eq("id", orderId).single<OrderRow>();
   if (!o) return null;
   const [{ data: items }, { data: refunds }, { data: st }, { data: show }, { data: artist }, { data: hold }] = await Promise.all([
@@ -78,14 +78,14 @@ async function emailRefund(r: NonNullable<Awaited<ReturnType<typeof loadForRefun
   await sendEmail({
     to: r.o.fans.email, replyTo: r.artist.support_email ?? undefined,
     subject: `Refund for your ${r.artist.name} order (${r.o.confirmation_code})`,
-    eyebrow: "Refund", title: `${dollars(amount)} is on its way back`,
+    eyebrow: "Refund", title: `${dollars(amount, r.o.currency)} is on its way back`,
     body: [
       ...(note ? [note] : []),
-      `We've refunded ${dollars(amount)} for ${what} for ${r.artist.name} in ${r.show.city}${r.show.region ? `, ${r.show.region}` : ""} on ${date}.`,
+      `We've refunded ${dollars(amount, r.o.currency)} for ${what} for ${r.artist.name} in ${r.show.city}${r.show.region ? `, ${r.show.region}` : ""} on ${date}.`,
       "Refunds go back to the card you paid with and usually show up within 5 to 10 business days, depending on your bank.",
       ...(picked ? ["Your other passes on this order still work."] : ["The passes on this order are no longer valid."]),
     ],
-    details: [["Confirmation number", r.o.confirmation_code], ["Refunded", dollars(amount)]],
+    details: [["Confirmation number", r.o.confirmation_code], ["Refunded", dollars(amount, r.o.currency)]],
     ...(picked && r.holdId ? { button: { label: "View your order", url: `${siteUrl()}/order/${r.holdId}` } } : {}),
     footnote: `Questions? Reply to this email to reach the ${r.artist.name} team.`,
   });
@@ -143,7 +143,7 @@ export async function syncDispute(dispute: Stripe.Dispute, accountId: string, op
     to, subject: `A fan disputed a charge (${o.confirmation_code})`,
     eyebrow: "Dispute", title: "A fan disputed a VIP charge",
     body: [
-      `The bank for order ${o.confirmation_code} opened a dispute for ${dollars(dispute.amount)} (reason: ${dispute.reason.replace(/_/g, " ")}).`,
+      `The bank for order ${o.confirmation_code} opened a dispute for ${dollars(dispute.amount, dispute.currency)} (reason: ${dispute.reason.replace(/_/g, " ")}).`,
       `Respond in your Stripe dashboard${due ? ` by ${due}` : ""} or the fan keeps the money and Stripe adds a dispute fee.`,
       (inPasses?.length ?? 0) > 0
         ? `Good news for your case: ${inPasses!.length} pass${inPasses!.length === 1 ? " was" : "es were"} checked in at the show. Mention the check-in time as evidence.`

@@ -1,3 +1,4 @@
+import { dollars } from "@/lib/packages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmail, siteUrl, type EmailContent } from "@/lib/email";
 
@@ -7,6 +8,7 @@ type Report = {
   by_artist: { name: string; orders: number; units: number; gross_cents: number; fees_cents: number }[];
   top_packages: { artist: string; package: string; city: string | null; date: string; units: number; left: number }[];
   new_artists: number; pending_review: number; open_disputes: number; shows_today: number;
+  other_currencies?: { currency: string; orders: number; gross_cents: number; fees_cents: number }[];
 };
 
 const $ = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -55,11 +57,12 @@ export async function buildDailyReport(day: string): Promise<{ subject: string; 
       ],
       details: [
         ["Refunds", $(r.refunds_cents)],
+        ...(r.other_currencies ?? []).map((c) => [`Also sold in ${c.currency.toUpperCase()}`, `${dollars(c.gross_cents, c.currency)} from ${c.orders} order${c.orders === 1 ? "" : "s"} (P&T fees ${dollars(c.fees_cents, c.currency)})`] as [string, string]),
         ["New artist sign-ups", String(r.new_artists)],
         ["Shows with VIP today", String(r.shows_today)],
       ],
       button: { label: "Open platform finance", url: `${siteUrl()}/admin/finance` },
-      footnote: "Sent every morning to P&T admins. Real sales only; sample data is left out. Turn this off under P&T admin, Admins.",
+      footnote: "Sent every morning to P&T admins. Totals are in US dollars; other currencies are listed separately. Real sales only; sample data is left out. Turn this off under P&T admin, Admins.",
     },
   };
 }

@@ -101,7 +101,7 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
       <div className="grid gap-3 p-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <p className="text-[16px] font-extrabold leading-tight">{p.name}</p>
-          <p className="text-[16px] font-extrabold">{dollars(p.price_cents)}</p>
+          <p className="text-[16px] font-extrabold">{dollars(p.price_cents, show.currency)}</p>
         </div>
         {p.description && <p className="text-[14px] text-mute">{p.description}</p>}
         {p.included.length > 0 && (
@@ -131,10 +131,10 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
               <span>Email me news and future shows from {s.name}</span>
             </label>
             <HumanCheck />
-            <BuyButton label={`Get VIP, ${dollars(p.price_cents)}`} bg={t.accent} fg={t.accentFg} />
+            <BuyButton label={`Get VIP, ${dollars(p.price_cents, show.currency)}`} bg={t.accent} fg={t.accentFg} />
           </form>
         )}
-        <p className="help text-center">{fee > 0 ? `Plus a ${dollars(fee)} service fee each.` : "No service fee."} Concert ticket sold separately.</p>
+        <p className="help text-center">{fee > 0 ? `Plus a ${dollars(fee, show.currency)} service fee each.` : "No service fee."} Concert ticket sold separately.</p>
         <div className="flex justify-center">
           <ShareButtons menu url={`${storeUrl(s.handle, show.slug)}#p-${p.id}`} title={`${p.name}: ${s.name} in ${show.city}`}
             text={`${p.name} for ${s.name} in ${cityOf(show)} on ${formatDate(show.date, { month: "short", day: "numeric" })}`} />

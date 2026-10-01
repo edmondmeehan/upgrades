@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEmailBatch, siteUrl } from "@/lib/email";
-import { dollars } from "@/lib/packages";
+import { dollars as baseDollars } from "@/lib/packages";
 
 export type Settlement = {
   show_id: string; artist_id: string; show_date: string; city: string | null; region: string | null; venue: string | null; status: string;
@@ -16,11 +16,14 @@ export async function sendSettlement(showId: string, opts: { onlyTo?: string } =
   const { data } = await db.rpc("show_settlement", { p_show: showId });
   const s = data as Settlement | null;
   if (!s) return { sent: 0, error: "Show not found." };
-  const [{ data: artist }, { data: members }, { data: taxRows }] = await Promise.all([
+  const [{ data: artist }, { data: members }, { data: taxRows }, { data: showCur }] = await Promise.all([
     db.from("artists").select("name").eq("id", s.artist_id).single<{ name: string }>(),
     db.from("artist_members").select("role, profiles(email)").eq("artist_id", s.artist_id).in("role", ["owner", "accountant"]),
     db.from("orders").select("tax_cents").eq("show_id", showId).eq("is_sample", false).eq("is_comp", false).neq("status", "refunded"),
+    db.from("shows").select("currency").eq("id", showId).single<{ currency: string }>(),
   ]);
+  const cur = showCur?.currency ?? "usd";
+  const dollars = (c: number) => baseDollars(c, cur);
   const tax = (taxRows ?? []).reduce((n, r) => n + (r.tax_cents ?? 0), 0);
   const to = opts.onlyTo ? [opts.onlyTo] : [...new Set(((members ?? []) as unknown as { profiles: { email: string } | null }[]).map((m) => m.profiles?.email).filter(Boolean) as string[])];
   if (!to.length || !artist) return { sent: 0, error: "No owner or accountant to send to." };

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireArtist } from "@/lib/auth";
 import { Meter } from "@/components/BarChart";
 import { PrintButton } from "@/components/FinanceNav";
-import { money, rate, sum } from "@/lib/money";
+import { money as fmtShowMoney, rate, sum } from "@/lib/money";
 import { isFinal, showLabel, type ProductSales, type ShowInfo, type ShowMoney } from "@/lib/finance";
 import { formatDate, formatDateTime } from "@/lib/util";
 import { Flash } from "@/components/Flash";
@@ -18,9 +18,10 @@ export default async function Settlement({ params, searchParams }: P) {
   const { artistId, showId } = await params;
   const { ok, err } = (await searchParams) ?? {};
   const { supabase, artist } = await requireArtist(artistId, ["owner", "accountant"]);
-  const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, tours(name)")
-    .eq("id", showId).eq("artist_id", artistId).maybeSingle<ShowInfo & { tours: { name: string } }>();
+  const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, currency, tours(name)")
+    .eq("id", showId).eq("artist_id", artistId).maybeSingle<ShowInfo & { currency: string; tours: { name: string } }>();
   if (!show) notFound();
+  const money = (c: number | null | undefined) => fmtShowMoney(c, show.currency);
   const { data: st } = await supabase.rpc("show_settlement", { p_show: showId });
   const statement = st as { sent_at: string | null; sent_net_cents: number | null; net_cents: number; orders: number } | null;
   const [{ data: m }, { data: products }, { data: orderIds }] = await Promise.all([

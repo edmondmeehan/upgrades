@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
-import { TEMPLATES, KIND_LABEL, dollars, type Product, type ShowProduct } from "@/lib/packages";
+import { TEMPLATES, KIND_LABEL, dollars, priceRange, type Product, type ShowProduct } from "@/lib/packages";
 
 export const metadata = { title: "VIP packages" };
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string; tour?: string }> };
@@ -13,7 +13,7 @@ export default async function Packages({ params, searchParams }: P) {
   const { supabase } = await requireArtist(artistId, ["owner", "rep"]);
   const [{ data: products }, { data: sps }] = await Promise.all([
     supabase.from("products").select("*").eq("artist_id", artistId).eq("is_sample", false).order("created_at").returns<Product[]>(),
-    supabase.from("show_products").select("*").eq("artist_id", artistId).eq("is_sample", false).returns<ShowProduct[]>(),
+    supabase.from("show_products").select("*, shows(currency)").eq("artist_id", artistId).eq("is_sample", false).returns<(ShowProduct & { shows: { currency: string } | null })[]>(),
   ]);
   const live = (products ?? []).filter((p) => !p.archived_at), archived = (products ?? []).filter((p) => p.archived_at);
   const q = tour ? `&tour=${tour}` : "";
@@ -29,7 +29,7 @@ export default async function Packages({ params, searchParams }: P) {
             const at = (sps ?? []).filter((sp) => sp.product_id === p.id && sp.active);
             const prices = at.map((sp) => sp.price_cents);
             const starts = at.map((sp) => sp.on_sale_at).filter((d): d is string => !!d && new Date(d) > new Date()).sort()[0];
-            const range = prices.length === 0 ? "Not on sale yet" : Math.min(...prices) === Math.max(...prices) ? dollars(prices[0]) : `${dollars(Math.min(...prices))} to ${dollars(Math.max(...prices))}`;
+            const range = prices.length === 0 ? "Not on sale yet" : priceRange(at.map((sp) => ({ price_cents: sp.price_cents, currency: sp.shows?.currency })));
             return (
               <li key={p.id}>
                 <Link href={`/a/${artistId}/packages/${p.id}`} className="card grid h-full overflow-hidden !no-underline text-ink transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(19,0,86,.12)]">

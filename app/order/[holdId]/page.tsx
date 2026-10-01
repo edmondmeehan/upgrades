@@ -73,7 +73,7 @@ export default async function Order({ params, searchParams }: P) {
               <p className="muted">A confirmation is on its way to {v.order.fans?.email}. You can come back to this order any time at <Link href="/find-order">upgrades.ontour.vip/find-order</Link> with your confirmation number and last name.</p>
               <dl className="grid gap-2 rounded-2xl bg-paper p-4 text-[15px]">
                 {[["Artist", v.artist.name], ["Package", `${v.product.name}${v.hold.quantity > 1 ? ` x ${v.hold.quantity}` : ""}`], ["Show", date], ["Where", `${v.show.venue_name ?? "Venue TBA"}, ${city}`],
-                  [v.order.is_comp ? "Price" : "Total paid", v.order.is_comp ? "Complimentary" : dollars(v.order.total_cents)]].map(([k, val]) => (
+                  [v.order.is_comp ? "Price" : "Total paid", v.order.is_comp ? "Complimentary" : dollars(v.order.total_cents, v.order.currency)]].map(([k, val]) => (
                   <div key={k} className="grid grid-cols-[96px_1fr] gap-3"><dt className="th pt-0.5">{k}</dt><dd className="font-semibold">{val}</dd></div>
                 ))}
               </dl>

@@ -4,10 +4,15 @@ import { PageHead } from "@/components/Shell";
 import { dollars } from "@/lib/packages";
 
 export const metadata = { title: "Orders" };
+/** Totals per currency, never added across currencies: "$1,250 + £360". */
+const priceTotals = (rows: { total_cents: number; currency: string }[]) => {
+  const by = new Map<string, number>(); rows.forEach((r) => by.set(r.currency, (by.get(r.currency) ?? 0) + r.total_cents));
+  return [...by.entries()].map(([c, n]) => dollars(n, c)).join(" + ") || dollars(0);
+};
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ q?: string; show?: string; status?: string }> };
 type Row = {
-  id: string; status: string; is_comp: boolean; total_cents: number; created_at: string; confirmation_code: string; show_id: string;
+  id: string; status: string; is_comp: boolean; currency: string; total_cents: number; created_at: string; confirmation_code: string; show_id: string;
   fans: { name: string | null; email: string } | null;
   shows: { show_date: string; city: string | null; region: string | null } | null;
   order_items: { quantity: number; show_products: { products: { name: string } } | null; passes: { attendee_name: string | null }[] }[];
@@ -21,7 +26,7 @@ export default async function AllOrders({ params, searchParams }: P) {
   const [{ data: shows }, { data, error: loadErr }] = await Promise.all([
     supabase.from("shows").select("id, show_date, city, region").eq("artist_id", artistId).neq("status", "draft").order("show_date", { ascending: false }).limit(200),
     (() => {
-      let qy = supabase.from("orders").select("id, status, is_comp, total_cents, created_at, confirmation_code, show_id, fans(name, email), shows!orders_show_id_fkey(show_date, city, region), order_items(quantity, show_products(products(name)), passes(attendee_name))")
+      let qy = supabase.from("orders").select("id, status, is_comp, currency, total_cents, created_at, confirmation_code, show_id, fans(name, email), shows!orders_show_id_fkey(show_date, city, region), order_items(quantity, show_products(products(name)), passes(attendee_name))")
         .eq("artist_id", artistId).eq("is_sample", false).order("created_at", { ascending: false }).limit(500);
       if (show) qy = qy.eq("show_id", show);
       if (status === "comp") qy = qy.eq("is_comp", true);
@@ -49,7 +54,7 @@ export default async function AllOrders({ params, searchParams }: P) {
         </select>
         <button className="btn btn-ghost">Filter</button>
       </form>
-      <p className="help">{rows.length} order{rows.length === 1 ? "" : "s"}{rows.length ? `, ${dollars(paid.reduce((n, o) => n + o.total_cents, 0))} in active paid orders` : ""}{(data ?? []).length === 500 ? ". Showing the latest 500; filter by show to see older ones." : ""}</p>
+      <p className="help">{rows.length} order{rows.length === 1 ? "" : "s"}{rows.length ? `, ${priceTotals(paid)} in active paid orders` : ""}{(data ?? []).length === 500 ? ". Showing the latest 500; filter by show to see older ones." : ""}</p>
       {loadErr && <p className="alert alert-red">Orders couldn&apos;t load ({loadErr.message}). Try refreshing; if it keeps happening, contact P&amp;T.</p>}
       {rows.length === 0 ? <p className="card px-4 py-12 text-center muted">{loadErr ? "" : "No orders match."}</p> : (
         <div className="card overflow-x-auto">
@@ -67,7 +72,7 @@ export default async function AllOrders({ params, searchParams }: P) {
                     <td className="px-4 py-3">{o.shows ? `${new Date(`${o.shows.show_date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}, ${o.shows.city ?? ""}` : ""}</td>
                     <td className="px-4 py-3">{o.order_items.map((i) => `${i.show_products?.products.name ?? "VIP"} x ${i.quantity}`).join(", ")}</td>
                     <td className="px-4 py-3 text-mute">{new Date(o.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</td>
-                    <td className="px-4 py-3 tabular-nums">{o.is_comp ? "Free" : dollars(o.total_cents)}</td>
+                    <td className="px-4 py-3 tabular-nums">{o.is_comp ? "Free" : dollars(o.total_cents, o.currency)}</td>
                     <td className="px-4 py-3"><span className={`badge ${cls}`}>{label}</span></td>
                   </tr>
                 );

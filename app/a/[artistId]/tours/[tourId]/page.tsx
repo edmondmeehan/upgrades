@@ -9,7 +9,7 @@ import { ShowBuilder } from "@/components/ShowBuilder";
 import { bulkCreateShows, publishReadyShows, updateTour, deleteTour } from "../../actions";
 import { formatDate, formatTime } from "@/lib/util";
 import type { Show, Tour } from "@/lib/types";
-import { dollars } from "@/lib/packages";
+import { dollars, priceRange } from "@/lib/packages";
 
 type P = { params: Promise<{ artistId: string; tourId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
 
@@ -22,14 +22,14 @@ export default async function TourPage({ params, searchParams }: P) {
   const { data } = await supabase.from("shows").select("*").eq("tour_id", tourId).order("show_date").returns<Show[]>();
   const shows = data ?? [];
   const { data: tourPkgs } = shows.length
-    ? await supabase.from("show_products").select("show_id, price_cents, active, products!inner(id, name, archived_at, is_sample)")
+    ? await supabase.from("show_products").select("show_id, price_cents, active, shows(currency), products!inner(id, name, archived_at, is_sample)")
         .in("show_id", shows.map((s) => s.id)).eq("active", true)
         .returns<{ show_id: string; price_cents: number; active: boolean; products: { id: string; name: string; archived_at: string | null; is_sample: boolean } }[]>()
     : { data: [] };
-  const pkgs = new Map<string, { id: string; name: string; shows: number; min: number; max: number }>();
+  const pkgs = new Map<string, { id: string; name: string; shows: number; min: number; max: number; rows: { price_cents: number; currency: string }[] }>();
   (tourPkgs ?? []).filter((r) => !r.products.archived_at && !r.products.is_sample).forEach((r) => {
-    const cur = pkgs.get(r.products.id) ?? { id: r.products.id, name: r.products.name, shows: 0, min: Infinity, max: 0 };
-    cur.shows++; cur.min = Math.min(cur.min, r.price_cents); cur.max = Math.max(cur.max, r.price_cents);
+    const cur = pkgs.get(r.products.id) ?? { id: r.products.id, name: r.products.name, shows: 0, min: Infinity, max: 0, rows: [] };
+    cur.shows++; cur.min = Math.min(cur.min, r.price_cents); cur.max = Math.max(cur.max, r.price_cents); cur.rows.push({ price_cents: r.price_cents, currency: (r as unknown as { shows?: { currency: string } }).shows?.currency ?? "usd" });
     pkgs.set(r.products.id, cur);
   });
   const pkgCount = new Map<string, number>();
@@ -108,7 +108,7 @@ export default async function TourPage({ params, searchParams }: P) {
                 <li key={p.id}>
                   <Link href={`/a/${artistId}/packages/${p.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3 !no-underline text-ink hover:bg-[#efedf5]">
                     <span className="font-bold">{p.name}</span>
-                    <span className="text-[14px] text-mute">{p.min === p.max ? dollars(p.min) : `${dollars(p.min)} to ${dollars(p.max)}`}, {p.shows} of {shows.length} shows</span>
+                    <span className="text-[14px] text-mute">{priceRange(p.rows)}, {p.shows} of {shows.length} shows</span>
                   </Link>
                 </li>
               ))}

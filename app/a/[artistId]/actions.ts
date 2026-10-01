@@ -125,7 +125,16 @@ export async function updateShow(artistId: string, showId: string, fd: FormData)
   const { data: cur } = await supabase.from("shows").select("status").eq("id", showId).single<{ status: string }>();
   if (cur?.status === "published" && (!f.city || !f.venue_name))
     redirect(withMsg(back, "err", "Published shows need a city and venue. Unpublish it first to clear them."));
-  const { error } = await supabase.from("shows").update(f).eq("id", showId).eq("artist_id", artistId);
+  // Currency can change only while the show has no orders.
+  const curIn = str(fd, "currency");
+  let currency: string | undefined;
+  if (["usd", "gbp", "eur", "cad", "aud"].includes(curIn)) {
+    const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("show_id", showId).eq("is_sample", false);
+    if (!count) currency = curIn;
+  }
+  const { error } = await supabase.from("shows").update({ ...f, ...(currency ? { currency } : {}) }).eq("id", showId).eq("artist_id", artistId);
+  // Re-apply package default prices in the (possibly new) currency.
+  if (!error && currency) await supabase.from("show_products").update({ price_cents: 0 }).eq("show_id", showId).eq("uses_default_price", true);
   done(back, error, "Show saved.");
 }
 

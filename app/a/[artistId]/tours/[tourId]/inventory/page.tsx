@@ -10,7 +10,7 @@ import { saveInventory } from "./actions";
 
 export const metadata = { title: "Tour inventory" };
 type P = { params: Promise<{ artistId: string; tourId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
-type S = { id: string; show_date: string; city: string | null; region: string | null; venue_name: string | null };
+type S = { id: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; currency: string };
 
 export default async function Inventory({ params, searchParams }: P) {
   const { artistId, tourId } = await params;
@@ -19,7 +19,7 @@ export default async function Inventory({ params, searchParams }: P) {
   const { data: tour } = await supabase.from("tours").select("*").eq("id", tourId).eq("artist_id", artistId).maybeSingle<Tour>();
   if (!tour) notFound();
   const [{ data: shows }, { data: products }] = await Promise.all([
-    supabase.from("shows").select("id, show_date, city, region, venue_name").eq("tour_id", tourId).neq("status", "cancelled").order("show_date").returns<S[]>(),
+    supabase.from("shows").select("id, show_date, city, region, venue_name, currency").eq("tour_id", tourId).neq("status", "cancelled").order("show_date").returns<S[]>(),
     supabase.from("products").select("*").eq("artist_id", artistId).is("archived_at", null).eq("is_sample", false).order("created_at").returns<Product[]>(),
   ]);
   const ids = (shows ?? []).map((s) => s.id);
@@ -57,8 +57,8 @@ export default async function Inventory({ params, searchParams }: P) {
         <p className="alert alert-yellow">Add shows to this tour first.</p>
       ) : (
         <InventoryGrid action={saveInventory.bind(null, artistId, tourId)} initial={initial}
-          packages={products!.map((p) => ({ id: p.id, name: p.name, default_price: p.default_price_cents, default_capacity: p.default_capacity }))}
-          shows={shows!.map((s) => ({ id: s.id, date: s.show_date, label: s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD", venue: s.venue_name, past: s.show_date < today }))} />
+          packages={products!.map((p) => ({ id: p.id, name: p.name, default_price: p.default_price_cents, default_capacity: p.default_capacity, currency_prices: (p as unknown as { currency_prices?: Record<string, number> }).currency_prices }))}
+          shows={shows!.map((s) => ({ id: s.id, date: s.show_date, label: s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD", venue: s.venue_name, past: s.show_date < today, currency: s.currency }))} />
       )}
     </>
   );

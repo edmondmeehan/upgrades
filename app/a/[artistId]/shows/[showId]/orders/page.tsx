@@ -29,7 +29,7 @@ export default async function Orders({ params, searchParams }: P) {
   const { ok, err, q } = await searchParams;
   const { supabase, role } = await requireArtist(artistId, ["owner", "rep"]);
   const canRefund = role === "owner" || role === "admin";
-  const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status, tour_id").eq("id", showId).eq("artist_id", artistId).maybeSingle();
+  const { data: show } = await supabase.from("shows").select("id, show_date, city, region, venue_name, status, tour_id, currency").eq("id", showId).eq("artist_id", artistId).maybeSingle();
   if (!show) notFound();
   const { data } = await supabase.from("orders")
     .select("id, status, is_comp, comp_note, total_cents, created_at, confirmation_code, answers, fans(name, email, marketing_opt_in_at), order_items(id, quantity, refunded_quantity, unit_price_cents, show_products(products(name, questions)), passes(id, code, checked_in_at, voided_at, attendee_name, attendee_email, sent_to_attendee_at, answers)), refunds(amount_cents, created_at)")
@@ -46,7 +46,7 @@ export default async function Orders({ params, searchParams }: P) {
   return (
     <div className="grid max-w-5xl gap-6">
       <PageHead crumbs={[{ href: `/a/${artistId}/tours/${show.tour_id}`, label: "Tour" }, { href: `/a/${artistId}/shows/${showId}`, label: where }]} title="Orders">
-        {formatDate(show.show_date)}{show.venue_name ? `, ${show.venue_name}` : ""}. {paid.length} active order{paid.length === 1 ? "" : "s"}, {dollars(gross)} collected after refunds.
+        {formatDate(show.show_date)}{show.venue_name ? `, ${show.venue_name}` : ""}. {paid.length} active order{paid.length === 1 ? "" : "s"}, {dollars(gross, show.currency)} collected after refunds.
       </PageHead>
       <Flash ok={ok} err={err} />
 
@@ -105,8 +105,8 @@ export default async function Orders({ params, searchParams }: P) {
                   </div>
                   <div className="text-right">
                     <span className={`badge ${cls}`}>{label}</span>
-                    <p className="mt-1 font-extrabold tabular-nums">{o.is_comp ? "Free" : dollars(o.total_cents)}</p>
-                    {refunded > 0 && <p className="help">{dollars(refunded)} refunded</p>}
+                    <p className="mt-1 font-extrabold tabular-nums">{o.is_comp ? "Free" : dollars(o.total_cents, show.currency)}</p>
+                    {refunded > 0 && <p className="help">{dollars(refunded, show.currency)} refunded</p>}
                   </div>
                 </div>
 
@@ -149,14 +149,14 @@ export default async function Orders({ params, searchParams }: P) {
                   <details className="rounded-2xl bg-paper p-4">
                     <summary className="cursor-pointer text-[14px] font-bold">Refund</summary>
                     <form action={refundOrderAction.bind(null, artistId, showId, o.id)} className="mt-3 grid gap-3">
-                      <label className="flex items-center gap-2 text-[14px]"><input type="radio" name="scope" value="all" defaultChecked className="check" />Everything left on the order ({dollars(o.total_cents - refunded)})</label>
+                      <label className="flex items-center gap-2 text-[14px]"><input type="radio" name="scope" value="all" defaultChecked className="check" />Everything left on the order ({dollars(o.total_cents - refunded, show.currency)})</label>
                       {refundablePasses > 1 && (
                         <div className="grid gap-2">
                           <label className="flex items-center gap-2 text-[14px]"><input type="radio" name="scope" value="some" className="check" />Only some passes</label>
                           {o.order_items.filter((i) => i.quantity > i.refunded_quantity).map((i) => (
                             <label key={i.id} className="ml-7 flex items-center gap-2 text-[14px]">
                               <select name={`qty_${i.id}`} className="input input-sm !w-20" defaultValue="0">{Array.from({ length: i.quantity - i.refunded_quantity + 1 }, (_, n) => <option key={n} value={n}>{n}</option>)}</select>
-                              of {i.quantity - i.refunded_quantity} {i.show_products?.products.name} ({dollars(i.unit_price_cents)} each, plus its share of the service fee)
+                              of {i.quantity - i.refunded_quantity} {i.show_products?.products.name} ({dollars(i.unit_price_cents, show.currency)} each, plus its share of the service fee)
                             </label>
                           ))}
                         </div>

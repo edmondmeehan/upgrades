@@ -2,14 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { FormShow } from "@/components/PackageForm";
 import type { ShowProduct } from "@/lib/packages";
 
-type ShowRow = { id: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; tour_id: string; status: string; tours: { name: string } };
+type ShowRow = { id: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; tour_id: string; status: string; currency: string; tours: { name: string } };
 
 /** Every show for the artist, with this package's price, quantity and units sold filled in where it's already on sale. */
 export async function loadFormShows(supabase: SupabaseClient, artistId: string, opts: {
   productId?: string; preselectTour?: string;
 }): Promise<FormShow[]> {
   const [{ data: shows }, { data: sps }, { data: sales }] = await Promise.all([
-    supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, tours(name)").eq("artist_id", artistId)
+    supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status, currency, tours(name)").eq("artist_id", artistId)
       .neq("status", "cancelled").order("show_date").returns<ShowRow[]>(),
     opts.productId ? supabase.from("show_products").select("*").eq("product_id", opts.productId).returns<ShowProduct[]>() : Promise.resolve({ data: [] as ShowProduct[] }),
     opts.productId ? supabase.from("v_show_product_sales").select("show_product_id, units, units_refunded").eq("product_id", opts.productId)
@@ -22,7 +22,7 @@ export async function loadFormShows(supabase: SupabaseClient, artistId: string, 
     const sp = bySp.get(s.id);
     return {
       id: s.id, date: s.show_date, label: s.city ? `${s.city}${s.region ? `, ${s.region}` : ""}` : "City TBD", venue: s.venue_name,
-      tour_id: s.tour_id, tour_name: s.tours?.name ?? "Tour", past: s.show_date < today,
+      tour_id: s.tour_id, tour_name: s.tours?.name ?? "Tour", past: s.show_date < today, currency: s.currency ?? "usd",
       selected: sp ? sp.active : !opts.productId && (!opts.preselectTour || opts.preselectTour === s.tour_id) && s.show_date >= today,
       // "" means the show follows the package default
       price: sp && !sp.uses_default_price ? String(sp.price_cents / 100) : "",

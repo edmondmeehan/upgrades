@@ -10,6 +10,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
   if (!allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { data: artist } = await supabase.from("artists").select("handle").eq("id", artistId).single<{ handle: string }>();
   const sp = req.nextUrl.searchParams;
+  const cur = ["usd", "gbp", "eur", "cad", "aud"].includes(sp.get("cur") ?? "") ? sp.get("cur")! : "usd";
   const kind = sp.get("kind");
   const year = parseYear(sp.get("year") ?? undefined);
   const [from, to] = yearRange(year);
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
 
   if (kind === "transactions") {
     const [{ data: orders }, { data: refunds }, { data: disputes }] = await Promise.all([
-      supabase.from("v_order_money").select("*").eq("artist_id", artistId).gte("created_at", from).lt("created_at", to).order("created_at").returns<OrderMoney[]>(),
+      supabase.from("v_order_money").select("*").eq("currency", cur).eq("artist_id", artistId).gte("created_at", from).lt("created_at", to).order("created_at").returns<OrderMoney[]>(),
       supabase.from("refunds").select("id, order_id, amount_cents, service_fee_refunded_cents, reason, created_at, orders!inner(show_id)").eq("artist_id", artistId).gte("created_at", from).lt("created_at", to).returns<{ id: string; order_id: string; amount_cents: number; service_fee_refunded_cents: number; reason: string | null; created_at: string; orders: { show_id: string } }[]>(),
       supabase.from("disputes").select("id, order_id, amount_cents, fee_cents, platform_fee_reversed_cents, status, opened_at, orders!inner(show_id)").eq("artist_id", artistId).gte("opened_at", from).lt("opened_at", to).returns<{ id: string; order_id: string; amount_cents: number; fee_cents: number; platform_fee_reversed_cents: number; status: string; opened_at: string; orders: { show_id: string } }[]>(),
     ]);
@@ -32,12 +33,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
       rows.push([d.opened_at.slice(0, 10), `Dispute (${d.status})`, d.order_id, ...showCols(d.orders.show_id), "", "", "", "", "", "", moneyCsv(d.status === "lost" ? -d.amount_cents : 0), moneyCsv(-d.fee_cents), moneyCsv(-(lost + d.fee_cents))]);
     });
     rows.splice(1, rows.length - 1, ...rows.slice(1).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
-    return csvResponse(`${slug}-transactions-${year}.csv`, rows);
+    return csvResponse(`${slug}-transactions-${year}-${cur}.csv`, rows);
   }
 
   if (kind === "monthly") {
-    const { data } = await supabase.from("v_artist_monthly").select("*").eq("artist_id", artistId).gte("month", from).lt("month", to).order("month").returns<Monthly[]>();
-    return csvResponse(`${slug}-monthly-${year}.csv`, [
+    const { data } = await supabase.from("v_artist_monthly").select("*").eq("currency", cur).eq("artist_id", artistId).gte("month", from).lt("month", to).order("month").returns<Monthly[]>();
+    return csvResponse(`${slug}-monthly-${year}-${cur}.csv`, [
       ["Month", "Orders", "Artist sales", "Service fees (paid by fans)", "Service fees returned", "Refunded to fans", "Stripe processing", "Dispute losses", "Dispute fees", "Net to artist"],
       ...(data ?? []).map((m) => [m.month.slice(0, 7), m.orders, moneyCsv(m.gross_cents), moneyCsv(m.service_fee_cents), moneyCsv(m.service_fee_refunded_cents), moneyCsv(m.refunded_cents), moneyCsv(m.stripe_fee_cents), moneyCsv(m.dispute_lost_cents), moneyCsv(m.dispute_fee_cents), moneyCsv(m.net_to_artist_cents)]),
     ]);
@@ -45,28 +46,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
 
   if (kind === "payouts") {
     const { data } = await supabase.from("payouts").select("stripe_payout_id, amount_cents, arrival_date, status").eq("artist_id", artistId).gte("arrival_date", from).lt("arrival_date", to).order("arrival_date").returns<{ stripe_payout_id: string | null; amount_cents: number; arrival_date: string; status: string }[]>();
-    return csvResponse(`${slug}-payouts-${year}.csv`, [["Arrival date", "Stripe payout ID", "Status", "Amount"], ...(data ?? []).map((p) => [p.arrival_date, p.stripe_payout_id ?? "", p.status, moneyCsv(p.amount_cents)])]);
+    return csvResponse(`${slug}-payouts-${year}-${cur}.csv`, [["Arrival date", "Stripe payout ID", "Status", "Amount"], ...(data ?? []).map((p) => [p.arrival_date, p.stripe_payout_id ?? "", p.status, moneyCsv(p.amount_cents)])]);
   }
 
   const settlementHeader = ["Show date", "Show", "Venue", "Orders", "Artist sales", "Refunded (artist share)", "Stripe processing", "Dispute costs", "Net to artist", "Service fees (paid by fans)"];
   const settlementRow = (s: ShowMoney) => [...showCols(s.show_id), s.orders, moneyCsv(s.gross_cents), moneyCsv(s.artist_refunded_cents), moneyCsv(s.stripe_fee_cents), moneyCsv(s.dispute_cost_cents), moneyCsv(s.net_to_artist_cents), moneyCsv(s.service_fee_cents - s.service_fee_refunded_cents)];
 
   if (kind === "shows") {
-    const { data } = await supabase.from("v_show_money").select("*").eq("artist_id", artistId).gte("show_date", from).lt("show_date", to).order("show_date").returns<ShowMoney[]>();
-    return csvResponse(`${slug}-settlements-${year}.csv`, [settlementHeader, ...(data ?? []).map(settlementRow)]);
+    const { data } = await supabase.from("v_show_money").select("*").eq("currency", cur).eq("artist_id", artistId).gte("show_date", from).lt("show_date", to).order("show_date").returns<ShowMoney[]>();
+    return csvResponse(`${slug}-settlements-${year}-${cur}.csv`, [settlementHeader, ...(data ?? []).map(settlementRow)]);
   }
 
   if (kind === "tour") {
     const tour = sp.get("tour") ?? "";
-    const { data } = await supabase.from("v_show_money").select("*").eq("artist_id", artistId).eq("tour_id", tour).order("show_date").returns<ShowMoney[]>();
-    return csvResponse(`${slug}-tour.csv`, [settlementHeader, ...(data ?? []).map(settlementRow)]);
+    const { data } = await supabase.from("v_show_money").select("*").eq("currency", cur).eq("artist_id", artistId).eq("tour_id", tour).order("show_date").returns<ShowMoney[]>();
+    return csvResponse(`${slug}-tour-${cur}.csv`, [settlementHeader, ...(data ?? []).map(settlementRow)]);
   }
 
   if (kind === "settlement") {
     const show = sp.get("show") ?? "";
     const [{ data: m }, { data: p }] = await Promise.all([
-      supabase.from("v_show_money").select("*").eq("artist_id", artistId).eq("show_id", show).maybeSingle<ShowMoney>(),
-      supabase.from("v_show_product_sales").select("*").eq("artist_id", artistId).eq("show_id", show).returns<ProductSales[]>(),
+      supabase.from("v_show_money").select("*").eq("currency", cur).eq("artist_id", artistId).eq("show_id", show).maybeSingle<ShowMoney>(),
+      supabase.from("v_show_product_sales").select("*").eq("currency", cur).eq("artist_id", artistId).eq("show_id", show).returns<ProductSales[]>(),
     ]);
     const s = showMap.get(show);
     const rows: (string | number)[][] = [
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ arti
       ["Upgrade", "Price", "Capacity", "Sold", "Refunded", "Checked in", "Sales"],
       ...(p ?? []).map((r) => [r.product_name, moneyCsv(r.price_cents), r.capacity, r.units - r.units_refunded, r.units_refunded, r.checked_in, moneyCsv(r.net_gross_cents)]),
     ];
-    return csvResponse(`${slug}-settlement-${s?.show_date ?? "show"}.csv`, rows);
+    return csvResponse(`${slug}-settlement-${s?.show_date ?? "show"}-${cur}.csv`, rows);
   }
 
   return NextResponse.json({ error: "Unknown export" }, { status: 400 });

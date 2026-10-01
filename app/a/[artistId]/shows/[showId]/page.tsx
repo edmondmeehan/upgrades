@@ -24,6 +24,7 @@ export default async function ShowPage({ params, searchParams }: P) {
     .maybeSingle<Show & { tours: { name: string } }>();
   if (!show) notFound();
   const statusAction = setShowStatus.bind(null, artistId, showId);
+  const { count: salesCount } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("show_id", showId).eq("is_sample", false);
   const { data: pkgs } = await supabase.from("show_products").select("id, price_cents, capacity, active, products!inner(id, name, archived_at, is_sample)")
     .eq("show_id", showId).eq("products.is_sample", false).is("products.archived_at", null)
     .returns<{ id: string; price_cents: number; capacity: number; active: boolean; products: { id: string; name: string } }[]>();
@@ -73,7 +74,7 @@ export default async function ShowPage({ params, searchParams }: P) {
 
       <form action={updateShow.bind(null, artistId, showId)} className="panel grid gap-4">
         <h2>Show details</h2>
-        <ShowFields show={show} />
+        <ShowFields show={show} currencyLocked={!!salesCount} />
         <div><SubmitButton variant="dark">Save show</SubmitButton></div>
       </form>
 
@@ -93,7 +94,7 @@ export default async function ShowPage({ params, searchParams }: P) {
               <li key={sp.id}>
                 <Link href={`/a/${artistId}/packages/${sp.products.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-paper px-4 py-3 !no-underline text-ink">
                   <span className="font-bold">{sp.products.name}{!sp.active && <span className="badge b-neutral ml-2">Paused</span>}</span>
-                  <span className="text-[14px] text-mute">{dollars(sp.price_cents)}, {sp.capacity} available</span>
+                  <span className="text-[14px] text-mute">{dollars(sp.price_cents, (show as unknown as { currency?: string }).currency)}, {sp.capacity} available</span>
                 </Link>
               </li>
             ))}

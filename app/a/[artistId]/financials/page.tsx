@@ -1,27 +1,33 @@
 import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
+import { pickCurrency } from "@/lib/currencyFilter";
+import { CurrencySwitch } from "@/components/CurrencySwitch";
+import { money as fmtMoney, money0 as fmtMoney0 } from "@/lib/money";
 import { BarChart, Meter } from "@/components/BarChart";
 import { money, rate, sum } from "@/lib/money";
 import { byProduct, monthlySeries, parseYear, showLabel, yearRange, type Monthly, type ProductSales, type ShowInfo, type ShowMoney } from "@/lib/finance";
 import { formatDate } from "@/lib/util";
 
-type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ year?: string }> };
+type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ year?: string; cur?: string }> };
 
 export default async function FinanceOverview({ params, searchParams }: P) {
   const { artistId } = await params;
-  const year = parseYear((await searchParams).year);
+  const sp = await searchParams;
+  const year = parseYear(sp.year);
   const [from, to] = yearRange(year);
   const { supabase } = await requireArtist(artistId, ["owner", "accountant"]);
+  const { cur, list: curList } = await pickCurrency(supabase, artistId, sp.cur);
+  const cm = (c: number | null | undefined) => fmtMoney(c, cur), cm0 = (c: number | null | undefined) => fmtMoney0(c, cur);
 
   const [{ data: monthly }, { data: shows }, { data: showMoney }] = await Promise.all([
-    supabase.from("v_artist_monthly").select("*").eq("artist_id", artistId).gte("month", from).lt("month", to).returns<Monthly[]>(),
+    supabase.from("v_artist_monthly").select("*").eq("currency", cur).eq("artist_id", artistId).gte("month", from).lt("month", to).returns<Monthly[]>(),
     supabase.from("shows").select("id, show_date, city, region, venue_name, tour_id, status").eq("artist_id", artistId).gte("show_date", from).lt("show_date", to).returns<ShowInfo[]>(),
-    supabase.from("v_show_money").select("*").eq("artist_id", artistId).gte("show_date", from).lt("show_date", to).returns<ShowMoney[]>(),
+    supabase.from("v_show_money").select("*").eq("currency", cur).eq("artist_id", artistId).gte("show_date", from).lt("show_date", to).returns<ShowMoney[]>(),
   ]);
   const m = monthly ?? [];
   const showIds = (shows ?? []).map((s) => s.id);
   const { data: products } = showIds.length
-    ? await supabase.from("v_show_product_sales").select("*").in("show_id", showIds).returns<ProductSales[]>()
+    ? await supabase.from("v_show_product_sales").select("*").eq("currency", cur).in("show_id", showIds).returns<ProductSales[]>()
     : { data: [] as ProductSales[] };
 
   if (m.length === 0 && (showMoney ?? []).length === 0) {
@@ -49,11 +55,12 @@ export default async function FinanceOverview({ params, searchParams }: P) {
 
   return (
     <>
+      <CurrencySwitch list={curList} cur={cur} base={`/a/${artistId}/financials`} keep={{ year: String(year) }} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <div className="stat"><b>{money(gross)}</b><span>Upgrade sales (your prices)</span></div>
-        <div className="stat"><b>{money(refunded - feeRefunded)}</b><span>Refunded (your share)</span></div>
-        <div className="stat"><b>{money(stripe)}</b><span>Stripe processing</span></div>
-        <div className="stat !border-violet"><b className="text-violet">{money(net)}</b><span>Net to you</span></div>
+        <div className="stat"><b>{cm(gross)}</b><span>Upgrade sales (your prices)</span></div>
+        <div className="stat"><b>{cm(refunded - feeRefunded)}</b><span>Refunded (your share)</span></div>
+        <div className="stat"><b>{cm(stripe)}</b><span>Stripe processing</span></div>
+        <div className="stat !border-violet"><b className="text-violet">{cm(net)}</b><span>Net to you</span></div>
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="stat"><b>{orders.toLocaleString()}</b><span>Orders</span></div>
@@ -67,11 +74,11 @@ export default async function FinanceOverview({ params, searchParams }: P) {
           <h2>Net to you by month</h2>
           <span className="help">By order date, {year}</span>
         </div>
-        <BarChart values={monthlySeries(m, "net_to_artist_cents")} label={`Net to artist by month, ${year}`} highlight={nowMonth} />
+        <BarChart cur={cur} values={monthlySeries(m, "net_to_artist_cents")} label={`Net to artist by month, ${year}`} highlight={nowMonth} />
         <p className="help">
-          Fans paid {money(gross + fees)} in total. {money(fees)} of that was the P&amp;T service fee, which fans pay on top of your price
-          {feeRefunded ? ` (${money(feeRefunded)} of it was returned with refunds)` : ""}.
-          {disputeCost ? ` Chargebacks cost ${money(disputeCost)}.` : ""}
+          Fans paid {cm(gross + fees)} in total. {cm(fees)} of that was the P&amp;T service fee, which fans pay on top of your price
+          {feeRefunded ? ` (${cm(feeRefunded)} of it was returned with refunds)` : ""}.
+          {disputeCost ? ` Chargebacks cost ${cm(disputeCost)}.` : ""}
         </p>
       </section>
 
@@ -84,8 +91,8 @@ export default async function FinanceOverview({ params, searchParams }: P) {
               {top.map((s) => (
                 <tr key={s.show_id}>
                   <td><Link href={`/a/${artistId}/financials/shows/${s.show_id}`} className="text-ink">{showLabel(showMap.get(s.show_id))}</Link><span className="help block">{formatDate(s.show_date, { month: "short", day: "numeric" })}</span></td>
-                  <td className="text-right">{money(s.gross_cents)}</td>
-                  <td className="text-right font-bold">{money(s.net_to_artist_cents)}</td>
+                  <td className="text-right">{cm(s.gross_cents)}</td>
+                  <td className="text-right font-bold">{cm(s.net_to_artist_cents)}</td>
                 </tr>
               ))}
             </tbody>
@@ -100,7 +107,7 @@ export default async function FinanceOverview({ params, searchParams }: P) {
                 <tr key={r.name}>
                   <td className="font-semibold">{r.name}</td>
                   <td className="min-w-40"><span className="text-[13px] font-semibold">{(r.units - r.refunded).toLocaleString()} of {r.capacity.toLocaleString()}</span><Meter value={r.units - r.refunded} max={r.capacity} /></td>
-                  <td className="text-right font-bold">{money(r.gross)}</td>
+                  <td className="text-right font-bold">{cm(r.gross)}</td>
                 </tr>
               ))}
             </tbody>

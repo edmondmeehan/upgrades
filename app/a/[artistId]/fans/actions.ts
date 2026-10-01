@@ -21,18 +21,18 @@ export async function sendAnnouncement(artistId: string, fd: FormData) {
 
   const [{ data: artist }, { data: shows }, { data: followers }] = await Promise.all([
     db.from("artists").select("name, handle, support_email").eq("id", artistId).single(),
-    db.from("shows").select("id, slug, show_date, city, region, venue_name, show_products(price_cents, active, is_sample)").eq("artist_id", artistId).eq("status", "published").in("id", showIds).order("show_date"),
+    db.from("shows").select("id, slug, show_date, city, region, venue_name, currency, show_products(price_cents, active, is_sample)").eq("artist_id", artistId).eq("status", "published").in("id", showIds).order("show_date"),
     (() => { let q = db.from("follows").select("email, name, token, region").eq("artist_id", artistId).not("confirmed_at", "is", null).is("unsubscribed_at", null);
       if (regions.length) q = q.in("region", regions); return q; })(),
   ]);
   if (!artist || !shows?.length) redirect(withMsg(back, "err", "Those shows aren't published."));
   if (!followers?.length) redirect(withMsg(back, "err", regions.length ? "No followers in those states yet." : "You don't have any followers yet."));
 
-  type S = { id: string; slug: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; show_products: { price_cents: number; active: boolean; is_sample: boolean }[] };
+  type S = { id: string; slug: string; show_date: string; city: string | null; region: string | null; venue_name: string | null; currency: string; show_products: { price_cents: number; active: boolean; is_sample: boolean }[] };
   const rows = (shows as S[]).map((s) => {
     const prices = s.show_products.filter((p) => p.active && !p.is_sample).map((p) => p.price_cents);
     return [new Date(`${s.show_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }),
-      `${s.city ?? ""}${s.region ? `, ${s.region}` : ""}`, s.venue_name ?? "", prices.length ? `from ${dollars(Math.min(...prices))}` : "coming soon"];
+      `${s.city ?? ""}${s.region ? `, ${s.region}` : ""}`, s.venue_name ?? "", prices.length ? `from ${dollars(Math.min(...prices), s.currency)}` : "coming soon"];
   });
   const one = shows.length === 1 ? (shows as S[])[0] : null;
   const url = one ? `${siteUrl()}/${artist.handle}/${one.slug}` : `${siteUrl()}/${artist.handle}`;

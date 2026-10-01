@@ -38,7 +38,7 @@ export function ogCard(s: Store, sh?: StoreShow) {
             {(sh ? sh.packages.slice(0, 3).map((p) => p.name) : [`${upcoming || s.shows.length} upcoming show${(upcoming || s.shows.length) === 1 ? "" : "s"}`]).map((label) => (
               <div key={label} style={{ display: "flex", padding: "12px 22px", borderRadius: 999, background: t.accent, color: t.accentFg, fontSize: 26, fontWeight: 700 }}>{label}</div>
             ))}
-            {from != null && <div style={{ display: "flex", padding: "12px 22px", fontSize: 26, fontWeight: 700 }}>{`from ${dollars(from)}`}</div>}
+            {from != null && <div style={{ display: "flex", padding: "12px 22px", fontSize: 26, fontWeight: 700 }}>{`from ${dollars(from, sh?.currency)}`}</div>}
           </div>
         </div>
       </div>

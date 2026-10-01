@@ -34,7 +34,22 @@ export type ShowProduct = {
   uses_default_price: boolean; uses_default_capacity: boolean;
 };
 
-export const dollars = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: cents % 100 ? 2 : 0 });
+/** "$150" / "£120" / "€99.50": whole amounts without pence. */
+export const dollars = (cents: number, cur: string = "usd") => {
+  const c = ["usd", "gbp", "eur", "cad", "aud"].includes(cur) ? cur : "usd";
+  const locale = c === "gbp" ? "en-GB" : c === "eur" ? "en-IE" : c === "cad" ? "en-CA" : c === "aud" ? "en-AU" : "en-US";
+  return (cents / 100).toLocaleString(locale, { style: "currency", currency: c.toUpperCase(), minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
+};
 
 /** "$1,250.50" -> 125050. NaN when unreadable. */
 export const parseCents = (v: string) => Math.round(Number(String(v).replace(/[$,\s]/g, "")) * 100);
+
+/** "$150", "$120 to $150", or "$150 / £120" when shows are in different currencies. */
+export function priceRange(rows: { price_cents: number; currency?: string | null }[]) {
+  const by = new Map<string, number[]>();
+  rows.forEach((r) => { const c = r.currency ?? "usd"; by.set(c, [...(by.get(c) ?? []), r.price_cents]); });
+  return [...by.entries()].map(([c, ps]) => {
+    const lo = Math.min(...ps), hi = Math.max(...ps);
+    return lo === hi ? dollars(lo, c) : `${dollars(lo, c)} to ${dollars(hi, c)}`;
+  }).join(" / ");
+}
