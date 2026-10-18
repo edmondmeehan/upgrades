@@ -2,7 +2,7 @@ import { PageHead } from "@/components/Shell";
 import { requireArtist } from "@/lib/auth";
 import { Flash } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { inviteMember, revokeInvite, removeMember } from "../actions";
+import { inviteMember, revokeInvite, removeMember, setMemberRole, restoreMember, forgetRemoved } from "../actions";
 import { siteUrl } from "@/lib/email";
 import { formatDateTime } from "@/lib/util";
 import { ROLE_LABEL, type MemberRole } from "@/lib/types";
@@ -10,18 +10,27 @@ import { ROLE_LABEL, type MemberRole } from "@/lib/types";
 type P = { params: Promise<{ artistId: string }>; searchParams: Promise<{ ok?: string; err?: string }> };
 type MemberRow = { user_id: string; role: MemberRole; created_at: string; profiles: { name: string | null; email: string } };
 type InviteRow = { id: string; email: string; role: MemberRole; token: string; expires_at: string };
+type RemovedRow = { email: string; name: string | null; role: MemberRole; removed_at: string; user_id: string | null };
+const ROLES: MemberRole[] = ["owner", "rep", "accountant", "door"];
+const RoleSelect = ({ value, name = "role" }: { value: MemberRole; name?: string }) => (
+  <select name={name} defaultValue={value} className="input input-sm !w-auto" aria-label="Role">
+    {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+  </select>
+);
 
 export default async function Team({ params, searchParams }: P) {
   const { artistId } = await params;
   const { ok, err } = await searchParams;
   const { supabase, user } = await requireArtist(artistId, ["owner"]);
-  const [{ data: members }, { data: invites }] = await Promise.all([
+  const [{ data: members }, { data: invites }, { data: removed }] = await Promise.all([
     supabase.from("artist_members").select("user_id, role, created_at, profiles!artist_members_user_id_fkey(name, email)")
       .eq("artist_id", artistId).order("created_at").returns<MemberRow[]>(),
     supabase.from("invitations").select("id, email, role, token, expires_at").eq("artist_id", artistId)
       .is("accepted_at", null).is("revoked_at", null).gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false }).returns<InviteRow[]>(),
+    supabase.from("removed_members").select("email, name, role, removed_at, user_id").eq("artist_id", artistId).order("removed_at", { ascending: false }).returns<RemovedRow[]>(),
   ]);
+  const owners = (members ?? []).filter((m) => m.role === "owner").length;
 
   return (
     <>
@@ -37,17 +46,49 @@ export default async function Team({ params, searchParams }: P) {
                 {m.user_id === user.id && <span className="muted"> (you)</span>}
                 <span className="muted block text-sm">{m.profiles.email}</span>
               </span>
-              <span className="flex items-center gap-3">
-                <span className="badge b-neutral">{ROLE_LABEL[m.role]}</span>
-                {m.role !== "owner" && (
+              <span className="flex flex-wrap items-center gap-2">
+                {m.role === "owner" && owners <= 1 ? (
+                  <span className="badge b-neutral" title="Make someone else an owner before changing this">{ROLE_LABEL[m.role]}</span>
+                ) : (
+                  <form action={setMemberRole.bind(null, artistId, m.user_id)} className="flex items-center gap-2">
+                    <RoleSelect value={m.role} />
+                    <SubmitButton variant="ghost" size="sm" pendingText="Saving…">Change</SubmitButton>
+                  </form>
+                )}
+                {m.user_id !== user.id && !(m.role === "owner" && owners <= 1) && (
                   <form action={removeMember.bind(null, artistId, m.user_id)}>
-                    <SubmitButton variant="ghost" size="sm" confirm={`Remove ${m.profiles.email} from the team?`}>Remove</SubmitButton>
+                    <SubmitButton variant="ghost" size="sm" confirm={`Remove ${m.profiles.email} from the team? You can add them back later.`}>Remove</SubmitButton>
                   </form>
                 )}
               </span>
             </li>
           ))}
         </ul>
+
+        <p className="help mt-2">Owners manage everything. Reps run shows, packages and fans. Accountants see money only. Door staff only check fans in.</p>
+
+        {(removed ?? []).length > 0 && (
+          <>
+            <h2 className="mb-3 mt-8">Removed</h2>
+            <ul className="card divide-y divide-line overflow-hidden">
+              {removed!.map((r) => (
+                <li key={r.email} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                  <span>
+                    <span className="font-semibold">{r.name ?? r.email}</span>
+                    <span className="muted block text-sm">{r.email}, was {ROLE_LABEL[r.role]}, removed {formatDateTime(r.removed_at)}{!r.user_id ? ". Their account was deleted, so adding them back sends a new invite." : ""}</span>
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <form action={restoreMember.bind(null, artistId, r.email)} className="flex items-center gap-2">
+                      <RoleSelect value={r.role} />
+                      <SubmitButton size="sm" pendingText="Adding…">{r.user_id ? "Add back" : "Send new invite"}</SubmitButton>
+                    </form>
+                    <form action={forgetRemoved.bind(null, artistId, r.email)}><SubmitButton variant="ghost" size="sm">Clear</SubmitButton></form>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
 
         {(invites ?? []).length > 0 && (
           <>

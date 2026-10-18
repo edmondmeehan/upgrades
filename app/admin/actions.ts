@@ -101,7 +101,13 @@ export async function revokeAdminInvite(id: string) {
 export async function removeAdmin(userId: string) {
   const { supabase } = await requireSuperAdmin();
   const { error } = await supabase.rpc("remove_admin", { p_user: userId });
-  redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Admin access removed."));
+  redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Admin access removed. You can reactivate them from Former admins."));
+}
+
+export async function reactivateAdmin(userId: string) {
+  const { supabase } = await requireSuperAdmin();
+  const { error } = await supabase.rpc("reactivate_admin", { p_user: userId });
+  redirect(withMsg("/admin/team", error ? "err" : "ok", error ? cleanError(error) : "Admin access restored. They'll set up two-step sign-in next time they open P&T admin."));
 }
 
 /** Sends a test email to the signed-in admin and shows Resend's answer on screen. */

@@ -2,7 +2,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash, type Msg } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { inviteAdmin, revokeAdminInvite, removeAdmin, sendTestEmail, sendMeDailyReport, setMyDailyReport } from "../actions";
+import { inviteAdmin, revokeAdminInvite, removeAdmin, reactivateAdmin, sendTestEmail, sendMeDailyReport, setMyDailyReport } from "../actions";
 import { emailConfigured } from "@/lib/email";
 import { siteUrl } from "@/lib/email";
 import { formatDateTime } from "@/lib/util";
@@ -13,14 +13,16 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
   const { supabase, user } = await requireSuperAdmin();
   const { data: me } = await supabase.from("profiles").select("daily_report").eq("id", user.id).single<{ daily_report: boolean }>();
   const { ok, err } = await searchParams;
-  const [{ data: admins }, { data: invites }, { data: mfa }] = await Promise.all([
+  const [{ data: admins }, { data: invites }, { data: mfa }, { data: former }] = await Promise.all([
     supabase.from("profiles").select("id, name, email, created_at").eq("is_super_admin", true).order("created_at")
       .returns<{ id: string; name: string | null; email: string; created_at: string }[]>(),
     supabase.from("admin_invitations").select("id, email, token, expires_at").is("accepted_at", null).is("revoked_at", null)
       .gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false })
       .returns<{ id: string; email: string; token: string; expires_at: string }[]>(),
     supabase.rpc("admin_mfa_status"),
+    supabase.rpc("former_admins"),
   ]);
+  const formerAdmins = (former ?? []) as { id: string; email: string; name: string | null; removed_at: string }[];
   const twoStep = new Map(((mfa ?? []) as { user_id: string; has_mfa: boolean }[]).map((m) => [m.user_id, m.has_mfa]));
 
   return (
@@ -50,6 +52,22 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
               </li>
             ))}
           </ul>
+
+          {formerAdmins.length > 0 && (
+            <section className="grid gap-3">
+              <h2>Former admins</h2>
+              <ul className="card divide-y divide-line overflow-hidden">
+                {formerAdmins.map((a) => (
+                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                    <span><span className="font-semibold">{a.name ?? a.email}</span>
+                      <span className="muted block text-sm">{a.email}, removed {new Date(a.removed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span></span>
+                    <form action={reactivateAdmin.bind(null, a.id)}><SubmitButton size="sm" pendingText="Restoring…" confirm={`Give ${a.email} P&T admin access again?`}>Reactivate</SubmitButton></form>
+                  </li>
+                ))}
+              </ul>
+              <p className="help">Someone who deleted their whole account isn&apos;t listed here. Invite them again instead.</p>
+            </section>
+          )}
 
           {(invites ?? []).length > 0 && (
             <section className="grid gap-3">

@@ -246,7 +246,35 @@ export async function revokeInvite(artistId: string, invitationId: string) {
 export async function removeMember(artistId: string, userId: string) {
   const { supabase } = await requireArtist(artistId, ["owner"]);
   const { error } = await supabase.rpc("remove_member", { p_artist: artistId, p_user: userId });
-  done(`/a/${artistId}/team`, error, "Removed from the team.");
+  done(`/a/${artistId}/team`, error, "Removed from the team. You can add them back from the Removed list.");
+}
+
+/** Change someone's role (owner, rep, accountant, door staff). */
+export async function setMemberRole(artistId: string, userId: string, fd: FormData) {
+  const { supabase } = await requireArtist(artistId, ["owner"]);
+  const role = str(fd, "role");
+  if (!["owner", "rep", "accountant", "door"].includes(role)) redirect(`/a/${artistId}/team`);
+  const { error } = await supabase.rpc("set_member_role", { p_artist: artistId, p_user: userId, p_role: role });
+  done(`/a/${artistId}/team`, error, "Role updated.");
+}
+
+/** Add a removed person back. If their account no longer exists, send them a fresh invite instead. */
+export async function restoreMember(artistId: string, email: string, fd: FormData) {
+  const { supabase } = await requireArtist(artistId, ["owner"]);
+  const role = str(fd, "role");
+  const { data, error } = await supabase.rpc("restore_member", { p_artist: artistId, p_email: email, p_role: ["owner", "rep", "accountant", "door"].includes(role) ? role : null });
+  if (error) done(`/a/${artistId}/team`, error, "");
+  if (data === "no_account") {
+    const re = new FormData(); re.set("email", email); re.set("role", role === "owner" ? "rep" : role || "rep");
+    await inviteMember(artistId, re); // redirects with its own message
+  }
+  done(`/a/${artistId}/team`, null, `${email} is back on the team.`);
+}
+
+export async function forgetRemoved(artistId: string, email: string) {
+  const { supabase } = await requireArtist(artistId, ["owner"]);
+  const { error } = await supabase.rpc("forget_removed_member", { p_artist: artistId, p_email: email });
+  done(`/a/${artistId}/team`, error, "Cleared from the Removed list.");
 }
 
 // ── Settings ─────────────────────────────────────────────────
