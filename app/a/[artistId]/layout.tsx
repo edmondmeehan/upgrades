@@ -4,7 +4,9 @@ import { ROLE_LABEL } from "@/lib/types";
 
 export default async function ArtistLayout({ children, params }: { children: React.ReactNode; params: Promise<{ artistId: string }> }) {
   const { artistId } = await params;
-  const { artist, role, profile } = await requireArtist(artistId);
+  // Every team role may load the frame; each page decides who can see it. (Without "door" here,
+  // door staff were redirected to Check-in by the frame around Check-in itself: an endless loop.)
+  const { artist, role, profile } = await requireArtist(artistId, ["owner", "rep", "accountant", "door"]);
   return (
     <Shell
       email={profile.email}
