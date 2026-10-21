@@ -2,7 +2,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash, type Msg } from "@/components/Flash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { inviteAdmin, revokeAdminInvite, removeAdmin, reactivateAdmin, sendTestEmail, sendMeDailyReport, setMyDailyReport } from "../actions";
+import { inviteAdmin, revokeAdminInvite, removeAdmin, reactivateAdmin, sendTestEmail, sendMeDailyReport, setMyDailyReport, sendMeEveryEmail } from "../actions";
 import { emailConfigured } from "@/lib/email";
 import { siteUrl } from "@/lib/email";
 import { formatDateTime } from "@/lib/util";
@@ -96,7 +96,11 @@ export default async function AdminTeam({ searchParams }: { searchParams: Msg })
         <form action={sendTestEmail} className="panel grid gap-3 lg:col-start-2">
           <h2>Email</h2>
           <p className="help">{emailConfigured() ? "Resend is connected. Send yourself a test to check delivery." : "RESEND_API_KEY isn't set in Vercel, so emails aren't sending."}</p>
-          <div><SubmitButton variant="ghost" pendingText="Sending…">Send test email</SubmitButton></div>
+          <div className="flex flex-wrap gap-2">
+            <SubmitButton variant="ghost" pendingText="Sending…">Send test email</SubmitButton>
+            <SubmitButton variant="ghost" pendingText="Sending all…" formAction={sendMeEveryEmail}>Send me every email</SubmitButton>
+          </div>
+          <p className="help">&quot;Send me every email&quot; sends one of each email the app sends (about 30, with sample data) to you, to check them on your phone in light and dark mode.</p>
         </form>
         <section className="panel grid gap-3 lg:col-start-2">
           <h2>Daily sales email</h2>

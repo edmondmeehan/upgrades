@@ -1,19 +1,33 @@
 /**
- * Branded email, sent through Resend. Same layout as photos.ontour.vip: a navy header with the
- * P&T logo, a white card, and a violet button. Without RESEND_API_KEY, emails print to the server log.
+ * The one email layout every OnTour Upgrades email uses (our own emails through Resend, and the
+ * Supabase sign-in templates generated from it by scripts/build-auth-templates.mts).
+ *
+ * Built for email clients, not browsers: nested tables, inline styles, a bulletproof button that
+ * also works in Outlook, and a dark mode for Apple Mail and Outlook (Gmail darkens colors itself,
+ * so every color is chosen to still read well when it does). Without RESEND_API_KEY, emails print
+ * to the server log instead of sending.
  */
 
 export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
+/** The site's logo (yellow and white on navy, the same file the site's header uses). */
 const LOGO = "https://please.co/cdn/shop/files/PTY_Logo_Type_Yellow_WhiteText.png?v=1768929642&width=440";
 const SUPPORT = "https://help.please.co";
-const FONT = "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif";
+const FONT = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif";
+const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Courier New',monospace";
+
+/** Site colors. */
+const C = {
+  navy: "#130056", violet: "#260797", yellow: "#F2D64B", ink: "#0B0B0F", body: "#3F3D4A", muted: "#5A5866",
+  paper: "#F7F6FA", box: "#F1EFF6", line: "#E7E5EE", white: "#FFFFFF",
+};
 
 export type EmailContent = {
   eyebrow?: string;           // small uppercase label, e.g. "Team invite"
   title: string;              // headline
   body: string[];             // paragraphs (plain text; escaped)
   button?: { label: string; url: string };
+  code?: string;              // a one-time code shown large (verification emails)
   details?: [string, string][]; // label/value rows in a grey box
   footnote?: string;          // small print under the button
   images?: { src: string; alt: string; caption?: string }[]; // e.g. pass QR codes
@@ -24,56 +38,121 @@ export type EmailContent = {
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** Dark mode for Apple Mail, iOS Mail and Outlook (macOS and Outlook.com via data-ogsc/ogsb). */
+const DARK_CSS = `
+:root { color-scheme: light dark; supported-color-schemes: light dark; }
+@media (prefers-color-scheme: dark) {
+  .em-bg { background:#0D0A1F !important; }
+  .em-card { background:#1B1631 !important; }
+  .em-box { background:#262040 !important; }
+  .em-h, .em-strong { color:#FFFFFF !important; }
+  .em-p { color:#DAD6E8 !important; }
+  .em-muted { color:#ABA6BF !important; }
+  .em-line { border-color:#342D54 !important; }
+  .em-link { color:#C9B8FF !important; }
+  .em-btn { background:${C.yellow} !important; }
+  .em-btn a { color:${C.navy} !important; }
+}
+[data-ogsc] .em-h, [data-ogsc] .em-strong { color:#FFFFFF !important; }
+[data-ogsc] .em-p { color:#DAD6E8 !important; }
+[data-ogsc] .em-muted { color:#ABA6BF !important; }
+[data-ogsc] .em-link { color:#C9B8FF !important; }
+[data-ogsb] .em-bg { background:#0D0A1F !important; }
+[data-ogsb] .em-card { background:#1B1631 !important; }
+[data-ogsb] .em-box { background:#262040 !important; }
+@media only screen and (max-width:600px) {
+  .em-pad { padding:24px 20px !important; }
+  .em-stat { display:block !important; width:100% !important; padding:0 0 8px !important; }
+  .em-title { font-size:24px !important; }
+}`;
+
 export function renderEmail(c: EmailContent) {
-  const p = (t: string) => `<p style="margin:0 0 16px;font:400 16px/1.55 ${FONT};color:#3F3D4A">${esc(t).replace(/\n/g, "<br>")}</p>`;
-  const details = c.details?.length
-    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 20px;background:#F7F6FA;border-radius:14px"><tr><td style="padding:14px 18px">${c.details
-        .map(([k, v]) => `<p style="margin:0 0 6px;font:400 14px/1.45 ${FONT};color:#5A5866"><strong style="color:#0B0B0F">${esc(k)}:</strong> ${esc(v)}</p>`).join("")}</td></tr></table>`
-    : "";
-  const button = c.button
-    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 20px"><tr><td style="background:#260797;border-radius:24px">
-<a href="${esc(c.button.url)}" style="display:inline-block;padding:14px 26px;font:700 15px/1 ${FONT};color:#ffffff;text-decoration:none;border-radius:24px">${esc(c.button.label)}</a></td></tr></table>
-<p style="margin:0 0 16px;font:400 13px/1.45 ${FONT};color:#5A5866">Or paste this link into your browser:<br><a href="${esc(c.button.url)}" style="color:#260797;word-break:break-all">${esc(c.button.url)}</a></p>`
-    : "";
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"><title>${esc(c.title)}</title></head>
-<body style="margin:0;padding:0;background:#F7F6FA">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(c.preheader ?? c.title)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6FA"><tr><td align="center" style="padding:24px 12px">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
-<tr><td style="background:#130056;border-radius:20px 20px 0 0;padding:24px 28px">
-<img src="${LOGO}" alt="Please &amp; Thank You" width="127" height="44" style="height:44px;width:127px;display:block;border:0">
+  const p = (t: string) => `<p class="em-p" style="margin:0 0 16px;font-family:${FONT};font-size:16px;line-height:1.55;color:${C.body}">${esc(t).replace(/\n/g, "<br>")}</p>`;
+
+  const button = c.button ? `
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 20px"><tr><td>
+<!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${esc(c.button.url)}" style="height:48px;v-text-anchor:middle;width:280px" arcsize="50%" stroke="f" fillcolor="${C.violet}"><w:anchorlock/><center style="color:#ffffff;font-family:Arial,sans-serif;font-size:15px;font-weight:bold">${esc(c.button.label)}</center></v:roundrect><![endif]-->
+<!--[if !mso]><!--><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-btn" bgcolor="${C.violet}" style="background:${C.violet};border-radius:24px">
+<a href="${esc(c.button.url)}" style="display:inline-block;padding:15px 28px;font-family:${FONT};font-size:15px;font-weight:700;line-height:18px;color:#ffffff;text-decoration:none;border-radius:24px">${esc(c.button.label)}</a>
+</td></tr></table><!--<![endif]-->
+</td></tr></table>
+<p class="em-muted" style="margin:0 0 16px;font-family:${FONT};font-size:13px;line-height:1.45;color:${C.muted}">Or paste this link into your browser:<br><a class="em-link" href="${esc(c.button.url)}" style="color:${C.violet};word-break:break-all">${esc(c.button.url)}</a></p>` : "";
+
+  const code = c.code ? `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px"><tr>
+<td class="em-box" align="center" bgcolor="${C.box}" style="background:${C.box};border-radius:14px;padding:18px">
+<span class="em-h" style="font-family:${MONO};font-size:30px;font-weight:700;letter-spacing:.3em;color:${C.ink}">${esc(c.code)}</span>
+</td></tr></table>` : "";
+
+  const details = c.details?.length ? `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px"><tr>
+<td class="em-box" bgcolor="${C.box}" style="background:${C.box};border-radius:14px;padding:14px 18px">
+${c.details.map(([k, v]) => `<p class="em-muted" style="margin:0 0 6px;font-family:${FONT};font-size:14px;line-height:1.45;color:${C.muted}"><strong class="em-strong" style="color:${C.ink}">${esc(k)}:</strong> ${esc(v)}</p>`).join("\n")}
+</td></tr></table>` : "";
+
+  const stats = c.stats?.length ? `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px"><tr>
+${c.stats.map((st) => `<td class="em-stat" valign="top" width="${Math.floor(100 / c.stats!.length)}%" style="padding:0 4px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-box" bgcolor="${C.box}" style="background:${C.box};border-radius:14px;padding:14px 12px">
+<p class="em-h" style="margin:0;font-family:${FONT};font-size:22px;font-weight:800;line-height:1.1;color:${C.ink}">${esc(st.value)}</p>
+<p class="em-muted" style="margin:4px 0 0;font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.3;color:${C.muted}">${esc(st.label)}</p>
+${st.note ? `<p class="em-muted" style="margin:4px 0 0;font-family:${FONT};font-size:12px;line-height:1.3;color:${C.muted}">${esc(st.note)}</p>` : ""}
+</td></tr></table></td>`).join("\n")}
+</tr></table>` : "";
+
+  const tables = (c.tables ?? []).map((tb) => `
+${tb.title ? `<p class="em-h" style="margin:8px 0 8px;font-family:${FONT};font-size:15px;font-weight:800;line-height:1.3;color:${C.ink}">${esc(tb.title)}</p>` : ""}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;border-collapse:collapse">
+<tr>${tb.head.map((h, i) => `<th class="em-muted em-line" align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:6px 8px;border-bottom:2px solid ${C.line};font-family:${FONT};font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;line-height:1.2;color:${C.muted}">${esc(h)}</th>`).join("")}</tr>
+${tb.rows.map((r) => `<tr>${r.map((v, i) => `<td class="em-p em-line" align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:7px 8px;border-bottom:1px solid ${C.line};font-family:${FONT};font-size:13px;line-height:1.4;color:${C.body}">${esc(v)}</td>`).join("")}</tr>`).join("\n")}
+</table>`).join("\n");
+
+  const images = (c.images ?? []).map((im) => `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr>
+<td align="center" bgcolor="${C.navy}" style="background:${C.navy};border-radius:16px;padding:16px">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#FFFFFF" style="background:#FFFFFF;border-radius:12px;padding:14px">
+<img src="${esc(im.src)}" alt="${esc(im.alt)}" width="220" height="220" style="display:block;width:220px;height:220px;border:0;outline:none">
+${im.caption ? `<p style="margin:8px 0 0;font-family:${MONO};font-size:18px;font-weight:700;letter-spacing:.12em;line-height:1.2;color:${C.ink}">${esc(im.caption)}</p>` : ""}
+</td></tr></table></td></tr></table>`).join("\n");
+
+  const html = `<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark">
+<meta name="x-apple-disable-message-reformatting"><meta name="format-detection" content="telephone=no,address=no,email=no,date=no">
+<title>${esc(c.title)}</title>
+<!--[if mso]><noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript><style>table,td,p,a,h1,span{font-family:Arial,Helvetica,sans-serif !important}</style><![endif]-->
+<!--[if !mso]><!--><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&display=swap" rel="stylesheet"><!--<![endif]-->
+<style>${DARK_CSS}</style>
+</head>
+<body class="em-bg" style="margin:0;padding:0;width:100%;background:${C.paper};-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all">${esc(c.preheader ?? c.title)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
+<table role="presentation" class="em-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.paper}" style="background:${C.paper}"><tr><td align="center" style="padding:24px 12px">
+<!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;margin:0 auto">
+<tr><td bgcolor="${C.navy}" style="background:${C.navy};border-radius:20px 20px 0 0;padding:22px 28px">
+<a href="${siteUrl()}" style="text-decoration:none"><img src="${LOGO}" alt="Please &amp; Thank You" width="127" height="44" style="display:block;width:127px;height:44px;border:0;outline:none;font-family:${FONT};font-size:18px;font-weight:800;color:${C.yellow}"></a>
 </td></tr>
-<tr><td style="background:#ffffff;border-radius:0 0 20px 20px;padding:32px 28px 28px">
-${c.eyebrow ? `<p style="margin:0 0 8px;font:700 12px/1.2 ${FONT};letter-spacing:.08em;text-transform:uppercase;color:#5A5866">${esc(c.eyebrow)}</p>` : ""}
-<h1 style="margin:0 0 16px;font:800 26px/1.15 ${FONT};letter-spacing:-.02em;color:#0B0B0F">${esc(c.title)}</h1>
+<tr><td class="em-card em-pad" bgcolor="#FFFFFF" style="background:#FFFFFF;border-radius:0 0 20px 20px;padding:32px 28px 28px">
+${c.eyebrow ? `<p class="em-muted" style="margin:0 0 8px;font-family:${FONT};font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;line-height:1.2;color:${C.muted}">${esc(c.eyebrow)}</p>` : ""}
+<h1 class="em-h em-title" style="margin:0 0 16px;font-family:${FONT};font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;color:${C.ink}">${esc(c.title)}</h1>
 ${c.body.map(p).join("\n")}
-${c.stats?.length ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px"><tr>${c.stats.map((st) =>
-  `<td valign="top" style="width:${Math.floor(100 / c.stats!.length)}%;padding:0 4px"><div style="background:#F7F6FA;border-radius:14px;padding:14px 12px">
-<p style="margin:0;font:800 22px/1.1 ${FONT};color:#0B0B0F">${esc(st.value)}</p>
-<p style="margin:4px 0 0;font:700 11px/1.3 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:#5A5866">${esc(st.label)}</p>
-${st.note ? `<p style="margin:4px 0 0;font:400 12px/1.3 ${FONT};color:#5A5866">${esc(st.note)}</p>` : ""}</div></td>`).join("")}</tr></table>` : ""}
-${(c.tables ?? []).map((tb) => `${tb.title ? `<p style="margin:8px 0 8px;font:800 15px/1.3 ${FONT};color:#0B0B0F">${esc(tb.title)}</p>` : ""}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse;font:400 13px/1.4 ${FONT};color:#3F3D4A">
-<tr>${tb.head.map((h, i) => `<th align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:6px 8px;border-bottom:1.5px solid #E7E5EE;font:700 11px/1.2 ${FONT};letter-spacing:.06em;text-transform:uppercase;color:#5A5866">${esc(h)}</th>`).join("")}</tr>
-${tb.rows.map((r) => `<tr>${r.map((v, i) => `<td align="${tb.numeric?.includes(i) ? "right" : "left"}" style="padding:7px 8px;border-bottom:1px solid #F0EEF5">${esc(v)}</td>`).join("")}</tr>`).join("")}
-</table>`).join("\n")}
-${details}
-${(c.images ?? []).map((im) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px"><tr><td align="center" style="background:#130056;border-radius:16px;padding:16px">
-<table role="presentation" cellpadding="0" cellspacing="0"><tr><td align="center" style="background:#ffffff;border-radius:12px;padding:14px">
-<img src="${esc(im.src)}" alt="${esc(im.alt)}" width="220" height="220" style="display:block;width:220px;height:220px;border:0">
-${im.caption ? `<p style="margin:8px 0 0;font:700 18px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:#0B0B0F">${esc(im.caption)}</p>` : ""}
-</td></tr></table></td></tr></table>`).join("\n")}
-${button}
-${c.footnote ? `<p style="margin:0;font:400 13px/1.45 ${FONT};color:#5A5866">${esc(c.footnote)}</p>` : ""}
+${code}${stats}${tables}${details}${images}${button}
+${c.footnote ? `<p class="em-muted" style="margin:0;font-family:${FONT};font-size:13px;line-height:1.45;color:${C.muted}">${esc(c.footnote)}</p>` : ""}
 </td></tr>
-<tr><td style="padding:20px 8px 0;text-align:center;font:400 12px/1.6 ${FONT};color:#5A5866">
-OnTour Upgrades by Please &amp; Thank You · <a href="${SUPPORT}" style="color:#260797">Help</a><br>
+<tr><td class="em-muted" align="center" style="padding:20px 8px 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${C.muted}">
+OnTour Upgrades by Please &amp; Thank You · <a class="em-link" href="${SUPPORT}" style="color:${C.violet}">Help</a><br>
 Please &amp; Thank You, Inc., 1909 H Street, Sacramento, CA 95811
 </td></tr>
-</table></td></tr></table></body></html>`;
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table>
+</body></html>`;
 
   const text = [
     c.title, "", ...c.body.flatMap((b) => [b, ""]),
+    ...(c.code ? [`Code: ${c.code}`, ""] : []),
     ...(c.stats ?? []).map((st) => `${st.label}: ${st.value}${st.note ? ` (${st.note})` : ""}`), ...(c.stats?.length ? [""] : []),
     ...(c.tables ?? []).flatMap((tb) => [...(tb.title ? [tb.title] : []), tb.head.join(" | "), ...tb.rows.map((r) => r.join(" | ")), ""]),
     ...(c.details ?? []).map(([k, v]) => `${k}: ${v}`), ...(c.details?.length ? [""] : []),

@@ -74,3 +74,27 @@ export async function updatePassword(fd: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   redirect(withMsg("/account", error ? "err" : "ok", error ? cleanError(error) : "Password updated."));
 }
+
+/** Forgot password: Supabase emails a reset link (from the branded "Reset password" template). */
+export async function requestPasswordReset(fd: FormData) {
+  const email = String(fd.get("email") ?? "").trim();
+  if (!email) redirect(withMsg("/forgot-password", "err", "Enter your email."));
+  if (!(await isHuman(fd))) redirect(withMsg("/forgot-password", "err", HUMAN_FAIL));
+  const supabase = await createClient();
+  await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${siteUrl()}/auth/callback?next=/reset-password` });
+  // Same message either way, so this page can't be used to check who has an account.
+  redirect(withMsg("/forgot-password", "ok", `If ${email} has an account, we've emailed a link to reset the password. It works for one hour.`));
+}
+
+/** Reset password: the reset link signs you in, then you choose a new password. */
+export async function setNewPassword(fd: FormData) {
+  const password = String(fd.get("password") ?? "");
+  if (password.length < 8) redirect(withMsg("/reset-password", "err", "Use at least 8 characters."));
+  if (password !== String(fd.get("confirm") ?? "")) redirect(withMsg("/reset-password", "err", "The two passwords don't match."));
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(withMsg("/forgot-password", "err", "That reset link has expired. Request a new one."));
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) redirect(withMsg("/reset-password", "err", cleanError(error)));
+  redirect(withMsg("/dashboard", "ok", "Password updated."));
+}

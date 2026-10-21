@@ -166,3 +166,13 @@ export async function setPromoActive(id: string, code: string, active: boolean) 
   revalidatePath(promoBack);
   redirect(withMsg(promoBack, "ok", active ? `${code} is active again.` : `${code} is turned off. Artists who already redeemed it keep their deal.`));
 }
+
+/** Sends one of every email (sample data) to the signed-in admin, to check them on a phone. */
+export async function sendMeEveryEmail() {
+  const { profile } = await requireSuperAdmin("/admin/team");
+  const { emailSamples } = await import("@/lib/emailSamples");
+  const { sendEmailBatch } = await import("@/lib/email");
+  const samples = emailSamples();
+  const { sent, error } = await sendEmailBatch(samples.map((s, i) => ({ to: profile.email, subject: `[Test ${i + 1}/${samples.length}, ${s.group}] ${s.subject}`, ...s.content })));
+  redirect(withMsg("/admin/team", sent ? "ok" : "err", sent ? `Sent ${sent} test emails to ${profile.email}. They may take a minute to arrive.` : `The test emails didn't send: ${error ?? "unknown error"}`));
+}

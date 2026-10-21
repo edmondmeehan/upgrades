@@ -14,7 +14,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       <form className="grid gap-5" action={signIn}>
         <input type="hidden" name="next" value={next} />
         <label className="field"><span>Email</span><input className="input" name="email" type="email" autoComplete="email" required /></label>
-        <label className="field"><span>Password</span><input className="input" name="password" type="password" autoComplete="current-password" /></label>
+        <label className="field"><span className="flex items-baseline justify-between">Password<Link href="/forgot-password" className="text-[13px] font-semibold">Forgot password?</Link></span><input className="input" name="password" type="password" autoComplete="current-password" /></label>
         <SubmitButton size="lg" block pendingText="Signing in…">Sign in</SubmitButton>
         <SubmitButton variant="ghost" block pendingText="Sending…" formAction={sendMagicLink}>Email me a sign-in link</SubmitButton>
       </form>
