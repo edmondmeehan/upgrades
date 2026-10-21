@@ -59,6 +59,7 @@ export default async function Storefront({ params, searchParams }: P) {
             </div>
           ))}
         </fieldset>
+        <Flash ok={ok} err={err} />
         <div><SubmitButton pendingText="Saving…">Save music, video and links</SubmitButton></div>
       </form>
     </>

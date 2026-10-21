@@ -1,4 +1,4 @@
-import { spotifyEmbed, youtubeEmbed, type ArtistLink } from "@/lib/media";
+import { cleanUrl, spotifyEmbed, youtubeEmbed, type ArtistLink } from "@/lib/media";
 import type { theme } from "@/lib/storefront";
 type Theme = ReturnType<typeof theme>;
 
@@ -8,7 +8,8 @@ export type Media = { spotify_url: string | null; youtube_url: string | null; we
 export function ArtistMedia({ m, name, t }: { m: Media | null; name: string; t: Theme }) {
   if (!m) return null;
   const sp = spotifyEmbed(m.spotify_url), yt = youtubeEmbed(m.youtube_url);
-  const links = [...(m.website ? [{ label: "Official website", url: m.website }] : []), ...(m.links ?? [])];
+  const site = m.website ? cleanUrl(m.website) : null; // older entries may be saved without https://
+  const links = [...(site ? [{ label: "Official website", url: site }] : []), ...(m.links ?? [])];
   if (!sp && !yt && !links.length) return null;
   return (
     <section className="mt-10 grid gap-6" aria-label={`More from ${name}`}>
@@ -41,7 +42,7 @@ export function ArtistMedia({ m, name, t }: { m: Media | null; name: string; t: 
             {links.map((l, i) => (
               <li key={l.url}>
                 <a href={l.url} target="_blank" rel="noopener noreferrer"
-                  className={`btn !no-underline ${i === 0 && m.website ? "" : "btn-ghost"}`} style={i === 0 && m.website ? { background: t.accent, color: t.accentFg } : undefined}>
+                  className={`btn !no-underline ${i === 0 && site ? "" : "btn-ghost"}`} style={i === 0 && site ? { background: t.accent, color: t.accentFg } : undefined}>
                   {l.label} <span aria-hidden>↗</span><span className="sr-only"> (opens in a new tab)</span>
                 </a>
               </li>
