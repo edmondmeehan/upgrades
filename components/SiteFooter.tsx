@@ -15,7 +15,7 @@ export function SiteFooter() {
           {" "}© {new Date().getFullYear()} Please &amp; Thank You. All Rights Reserved.
         </p>
         <nav aria-label="Legal">
-          <ul>{LINKS.map(([label, href]) => <li key={href}><a href={href} target="_blank" rel="noopener noreferrer">{label}</a></li>)}</ul>
+          <ul>{LINKS.map(([label, href]) => <li key={href} className={label === "Help" ? "footer-help" : undefined}><a href={href} target="_blank" rel="noopener noreferrer">{label}</a></li>)}</ul>
         </nav>
       </div>
     </footer>
