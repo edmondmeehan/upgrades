@@ -112,3 +112,20 @@ export async function followArtist(handle: string, fd: FormData) {
   }
   redirect(back(r.confirmed ? "followed=already" : "followed=check"));
 }
+
+/** Sold-out package: join its waitlist. */
+export async function joinWaitlist(handle: string, slug: string, spId: string, fd: FormData) {
+  const back = (q: string) => `/${handle}/${slug}?${q}&pkg=${spId}#p-${spId}`;
+  if (!(await isHuman(fd))) redirect(back(`err=${encodeURIComponent(HUMAN_FAIL)}`));
+  const db = createAdminClient();
+  if (!db) redirect(back("err=Try+again+soon."));
+  const { data } = await db.rpc("join_waitlist", {
+    p_show_product: spId, p_email: String(fd.get("email") ?? ""), p_name: null,
+    p_qty: Math.floor(Number(fd.get("qty") ?? 1)), p_ip_hash: await clientKey("waitlist"),
+  });
+  const r = data as { result: string; position?: number } | null;
+  if (!r || r.result === "throttled") redirect(back("err=Too+many+tries.+Try+again+later."));
+  if (r.result === "bad_email") redirect(back("err=That+email+doesn%27t+look+right."));
+  if (r.result !== "ok") redirect(back("err=This+package+isn%27t+available."));
+  redirect(back(`wl=${r.position ?? 0}`));
+}

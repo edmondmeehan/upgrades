@@ -5,7 +5,7 @@ import { ShareButtons } from "./ShareButtons";
 import { BuyButton } from "./BuyButton";
 import { HumanCheck } from "./HumanCheck";
 import { BuyFields } from "./BuyFields";
-import { startCheckout, followArtist } from "@/app/[handle]/actions";
+import { startCheckout, followArtist, joinWaitlist } from "@/app/[handle]/actions";
 import { US_STATES } from "@/lib/genres";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
@@ -87,7 +87,7 @@ export function StoreHero({ s, t, compact = false, follow }: { s: Store; t: Them
   );
 }
 
-export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme; show: StoreShow; s: Store; err?: string }) {
+export function PackageCard({ p, t, show, s, err, note }: { p: StorePackage; t: Theme; show: StoreShow; s: Store; err?: string; note?: string }) {
   const upcoming = p.on_sale_at && new Date(p.on_sale_at) > new Date();
   const soldOut = p.remaining <= 0;
   const fee = Math.round(p.price_cents * (show.fee_bps ?? s.fee_bps) / 10000); // promo codes can lower this per show
@@ -114,7 +114,23 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
           {!soldOut && !upcoming && p.remaining <= 10 && <span className="badge b-pending">Only {p.remaining} left</span>}
         </div>
         {soldOut ? (
-          <button type="button" disabled className="btn w-full" style={{ background: "#e7e5ee", color: "#5a5866" }}>Sold out</button>
+          note ? (
+            <p role="status" className="rounded-2xl bg-paper p-3 text-[14px] font-semibold">{note}</p>
+          ) : (
+            <details className="rounded-2xl bg-paper" open={!!err}>
+              <summary className="btn w-full cursor-pointer list-none [&::-webkit-details-marker]:hidden" style={{ background: t.accent, color: t.accentFg }}>Sold out: join the waitlist</summary>
+              <form action={joinWaitlist.bind(null, s.handle, show.slug, p.id)} className="grid gap-2 p-3">
+                <p className="text-[13px]">We&apos;ll email you if spots open up. Whoever checks out first gets them.</p>
+                {err && <p role="alert" className="alert alert-red !py-2 !text-[13px]">{err}</p>}
+                <input name="email" type="email" required placeholder="Your email" className="input input-sm" aria-label="Email" />
+                <label className="flex items-center gap-2 text-[13px]">How many?
+                  <select name="qty" className="input input-sm !w-20" defaultValue="1">{[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}</select>
+                </label>
+                <HumanCheck />
+                <button className="btn btn-sm">Join the waitlist</button>
+              </form>
+            </details>
+          )
         ) : upcoming ? (
           <div className="rounded-2xl p-3" style={{ background: t.brand, color: t.fg }}><Countdown to={p.on_sale_at!} onDark={t.fg === "#ffffff"} /></div>
         ) : !s.accepting_payments ? (
@@ -144,7 +160,7 @@ export function PackageCard({ p, t, show, s, err }: { p: StorePackage; t: Theme;
   );
 }
 
-export function ShowCard({ sh, s, t, linkTitle = true, err }: { sh: StoreShow; s: Store; t: Theme; linkTitle?: boolean; err?: { pkg: string; msg: string } }) {
+export function ShowCard({ sh, s, t, linkTitle = true, err, note }: { sh: StoreShow; s: Store; t: Theme; linkTitle?: boolean; err?: { pkg: string; msg: string }; note?: { pkg: string; msg: string } }) {
   const title = <p className="mt-1 text-[20px] font-extrabold leading-tight">{cityOf(sh)}</p>;
   return (
     <li id={sh.slug} className="card grid scroll-mt-6 gap-4 p-5 md:grid-cols-[220px_minmax(0,1fr)] md:p-6">
@@ -157,7 +173,7 @@ export function ShowCard({ sh, s, t, linkTitle = true, err }: { sh: StoreShow; s
       </div>
       {sh.packages.length === 0
         ? <p className="help self-center">VIP upgrades for this show aren&apos;t on sale yet.</p>
-        : <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">{sh.packages.map((p) => <PackageCard key={p.id} p={p} t={t} show={sh} s={s} err={err?.pkg === p.id ? err.msg : undefined} />)}</div>}
+        : <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))]">{sh.packages.map((p) => <PackageCard key={p.id} p={p} t={t} show={sh} s={s} err={err?.pkg === p.id ? err.msg : undefined} note={note?.pkg === p.id ? note.msg : undefined} />)}</div>}
     </li>
   );
 }
@@ -185,7 +201,7 @@ function vipStatus(sh: StoreShow): { kind: "buy" | "soon" | "onsale" | "soldout"
     const from = Math.min(...available.map((p) => p.price_cents));
     return { kind: "buy", label: available.every((p) => p.presale) ? "Presale VIP" : "Get VIP", from };
   }
-  if (live.length === pk.length) return { kind: "soldout", label: "VIP sold out" };
+  if (live.length === pk.length) return { kind: "soldout", label: "VIP sold out: join waitlist" };
   const next = pk.filter((p) => p.on_sale_at && new Date(p.on_sale_at).getTime() > now).map((p) => p.on_sale_at!).sort()[0];
   return { kind: "onsale", label: `VIP on sale ${new Date(next).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` };
 }

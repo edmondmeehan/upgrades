@@ -71,7 +71,10 @@ async function handle(req: NextRequest) {
       return NextResponse.json({ received: true });
     }
     if (event.account && event.type === "checkout.session.expired") {
-      await db.rpc("release_checkout_hold", { p_session: (event.data.object as Stripe.Checkout.Session).id });
+      const sess = event.data.object as Stripe.Checkout.Session;
+      await db.rpc("release_checkout_hold", { p_session: sess.id });
+      const { data: held } = await db.from("checkout_holds").select("show_product_id").eq("stripe_session_id", sess.id).maybeSingle();
+      if (held?.show_product_id) { const { notifyWaitlist } = await import("@/lib/waitlist"); await notifyWaitlist(held.show_product_id); }
       return NextResponse.json({ received: true });
     }
 

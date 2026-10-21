@@ -86,7 +86,10 @@ export async function savePackage(artistId: string, productId: string | null, fd
   }
 
   revalidatePath(`/a/${artistId}/packages`);
-  const msg = `Saved. On sale at ${clean.length} show${clean.length === 1 ? "" : "s"}.${paused ? ` ${paused} show${paused === 1 ? " has" : "s have"} sales already, so ${paused === 1 ? "it's" : "they're"} paused rather than removed.` : ""}`;
+  // More spots may have opened: email the next people on any waitlist.
+  const { sweepWaitlists } = await import("@/lib/waitlist");
+  const notified = await sweepWaitlists();
+  const msg = `${notified ? `Emailed ${notified} ${notified === 1 ? "person" : "people"} on the waitlist. ` : ""}Saved. On sale at ${clean.length} show${clean.length === 1 ? "" : "s"}.${paused ? ` ${paused} show${paused === 1 ? " has" : "s have"} sales already, so ${paused === 1 ? "it's" : "they're"} paused rather than removed.` : ""}`;
   redirect(withMsg(`/a/${artistId}/packages/${id}`, "ok", msg));
 }
 

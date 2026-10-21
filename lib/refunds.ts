@@ -68,6 +68,8 @@ export async function refundOrder(orderId: string, opts: { items: { item_id: str
   });
   if (error) console.error("[refund] record", error);
   if (opts.notify !== false) await emailRefund(r, amount, picked, opts.note).catch((e) => console.error("[refund] email", e));
+  // Refunded spots go to the waitlist (not when the whole show is being cancelled).
+  if (opts.reason !== "Show cancelled") { const { notifyWaitlistForShow } = await import("@/lib/waitlist"); await notifyWaitlistForShow(o.show_id); }
   return { ok: true, amount, status: (data as { status?: string } | null)?.status };
 }
 

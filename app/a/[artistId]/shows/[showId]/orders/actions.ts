@@ -123,6 +123,18 @@ export async function cancelComp(artistId: string, showId: string, orderId: stri
     await db.from("order_items").update({ refunded_quantity: i.quantity }).eq("id", i.id);
   }
   await db.from("orders").update({ status: "refunded" }).eq("id", orderId);
+  const { notifyWaitlistForShow } = await import("@/lib/waitlist");
+  await notifyWaitlistForShow(showId);
   revalidatePath(back);
   redirect(withMsg(back, "ok", "Comp cancelled. Its passes no longer work."));
+}
+
+/** Email the next people on this show's waitlists right now (if any spots are open). */
+export async function emailWaitlistNow(artistId: string, showId: string) {
+  await requireArtist(artistId, ["owner", "rep"]);
+  const { notifyWaitlistForShow } = await import("@/lib/waitlist");
+  const n = await notifyWaitlistForShow(showId);
+  const back = `/a/${artistId}/shows/${showId}/orders`;
+  revalidatePath(back);
+  redirect(withMsg(back, "ok", n ? `Emailed ${n} ${n === 1 ? "person" : "people"} on the waitlist.` : "No open spots right now, so nobody was emailed. Add spots or wait for a refund."));
 }

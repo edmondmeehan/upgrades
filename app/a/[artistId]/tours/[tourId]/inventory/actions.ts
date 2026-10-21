@@ -68,5 +68,7 @@ export async function saveInventory(artistId: string, tourId: string, fd: FormDa
   }
 
   revalidatePath(back);
-  redirect(withMsg(back, "ok", `Inventory saved.${paused ? ` ${paused} package${paused === 1 ? " was" : "s were"} paused instead of removed because ${paused === 1 ? "it has" : "they have"} sales.` : ""}`));
+  const { sweepWaitlists } = await import("@/lib/waitlist");
+  const notified = await sweepWaitlists();
+  redirect(withMsg(back, "ok", `${notified ? `Emailed ${notified} ${notified === 1 ? "person" : "people"} on the waitlist. ` : ""}Inventory saved.${paused ? ` ${paused} package${paused === 1 ? " was" : "s were"} paused instead of removed because ${paused === 1 ? "it has" : "they have"} sales.` : ""}`));
 }

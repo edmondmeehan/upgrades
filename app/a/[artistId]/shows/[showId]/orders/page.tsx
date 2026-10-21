@@ -7,7 +7,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { formatDate } from "@/lib/util";
 import { dollars } from "@/lib/packages";
 import { describeAnswers, sanitizeQuestions } from "@/lib/questions";
-import { refundOrderAction, voidPassAction, cancelShowAndRefund, createComp, resendConfirmation, setGuest, cancelComp } from "./actions";
+import { refundOrderAction, voidPassAction, cancelShowAndRefund, createComp, resendConfirmation, setGuest, cancelComp, emailWaitlistNow } from "./actions";
 
 export const metadata = { title: "Orders" };
 export const dynamic = "force-dynamic";
@@ -36,6 +36,10 @@ export default async function Orders({ params, searchParams }: P) {
     .eq("show_id", showId).eq("is_sample", false).order("created_at", { ascending: false }).returns<Row[]>();
   const { data: pkgs } = await supabase.from("show_products").select("id, products!inner(name, archived_at, is_sample)").eq("show_id", showId).eq("active", true)
     .eq("products.is_sample", false).is("products.archived_at", null).returns<{ id: string; products: { name: string } }[]>();
+  const { data: waitRaw } = await supabase.from("waitlist").select("email, qty, created_at, notified_at, converted_at, show_product_id, show_products(products(name))")
+    .eq("show_id", showId).is("left_at", null).is("converted_at", null).order("created_at")
+    .returns<{ email: string; qty: number; created_at: string; notified_at: string | null; converted_at: string | null; show_product_id: string; show_products: { products: { name: string } } | null }[]>();
+  const waiting = waitRaw ?? [];
   const term = (q ?? "").trim().toLowerCase();
   const orders = (data ?? []).filter((o) => !term || [o.fans?.name, o.fans?.email, o.confirmation_code, ...o.order_items.flatMap((i) => i.passes.map((p) => p.attendee_name))].some((v) => v?.toLowerCase().includes(term)));
   const all = data ?? [];
@@ -68,6 +72,24 @@ export default async function Orders({ params, searchParams }: P) {
             <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" name="allow_over" className="check" />Allow over capacity (add them even if the package is full)</label>
             <div><SubmitButton pendingText="Adding…">Add comp</SubmitButton></div>
           </form>
+        </details>
+      )}
+
+      {waiting.length > 0 && (
+        <details className="panel" open>
+          <summary className="cursor-pointer font-extrabold">Waitlist ({waiting.length} {waiting.length === 1 ? "person" : "people"}, {waiting.reduce((n, w) => n + w.qty, 0)} spots wanted)</summary>
+          <div className="mt-3 grid gap-3">
+            <p className="help">Fans who joined after a package sold out. When spots open (a refund, a cancelled comp, or you add more), the next people in line are emailed automatically. Whoever checks out first gets the spots.</p>
+            <ul className="card divide-y divide-line overflow-hidden">
+              {waiting.map((w, i) => (
+                <li key={w.email + w.show_product_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-[14px]">
+                  <span><span className="text-mute">{i + 1}.</span> <span className="font-semibold">{w.email}</span> <span className="text-mute">wants {w.qty} for {w.show_products?.products.name}</span></span>
+                  <span className="text-[12px] text-mute">{w.notified_at ? `emailed ${new Date(w.notified_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : `joined ${new Date(w.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}</span>
+                </li>
+              ))}
+            </ul>
+            <form action={emailWaitlistNow.bind(null, artistId, showId)}><SubmitButton size="sm" variant="ghost" pendingText="Checking…">Email the waitlist now</SubmitButton></form>
+          </div>
         </details>
       )}
 
