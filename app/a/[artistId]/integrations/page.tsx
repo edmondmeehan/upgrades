@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireArtist } from "@/lib/auth";
 import { PageHead } from "@/components/Shell";
 import { Flash } from "@/components/Flash";
@@ -83,7 +84,10 @@ export default async function Integrations({ params, searchParams }: P) {
         </div>
         {(shows ?? []).length === 0 ? <p className="help">Publish some shows first; their VIP links show up here.</p> : (
           <>
-            <a href={`/a/${artistId}/integrations/seated`} className="btn btn-ghost btn-sm justify-self-start">Download Seated CSV</a>
+            <div className="flex flex-wrap gap-2">
+              <a href={`/a/${artistId}/integrations/seated`} className="btn btn-ghost btn-sm">Download Seated CSV</a>
+              <Link href={`/a/${artistId}/links`} className="btn btn-ghost btn-sm">All links, or send them to someone</Link>
+            </div>
             <ul className="card divide-y divide-line overflow-hidden">
               {shows!.map((s) => {
                 const url = storeUrl(artist.handle, s.slug);

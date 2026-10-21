@@ -3,7 +3,7 @@ import Link from "next/link";
 const SRC = "https://please.co/cdn/shop/files/PTY_Logo_Type_Yellow_WhiteText.png?v=1768929642&width=880";
 
 /** Please & Thank You logo. On light backgrounds it sits in a navy chip, as on photos.ontour.vip. */
-export function Logo({ href = "/", size = 40, chip = false, label = "OnTour Upgrades home" }: { href?: string; size?: number; chip?: boolean; label?: string }) {
+export function Logo({ href = "/", size = 40, chip = false, label = "OnTour Access home" }: { href?: string; size?: number; chip?: boolean; label?: string }) {
   const w = Math.round(size * 2.9);
   const img = (
     // eslint-disable-next-line @next/next/no-img-element

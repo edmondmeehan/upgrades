@@ -11,7 +11,7 @@ export function SiteFooter() {
     <footer className="site-footer onDark">
       <div className="site-footer-in">
         <p className="site-footer-from">
-          Upgrades is a product from your friends at <a href="https://please.co" target="_blank" rel="noopener noreferrer">Please &amp; Thank You</a>.
+          OnTour Access is a product from your friends at <a href="https://please.co" target="_blank" rel="noopener noreferrer">Please &amp; Thank You</a>.
           {" "}© {new Date().getFullYear()} Please &amp; Thank You. All Rights Reserved.
         </p>
         <nav aria-label="Legal">

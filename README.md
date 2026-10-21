@@ -1,4 +1,4 @@
-# OnTour Upgrades
+# OnTour Access
 
 Self-serve VIP upgrades for artists, by Please & Thank You. Lives at **upgrades.ontour.vip**.
 
@@ -39,7 +39,7 @@ git push -u origin main
 ### 3. Vercel
 1. Import the GitHub repo.
 2. Environment variables (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `NEXT_PUBLIC_SITE_URL=https://upgrades.ontour.vip`, `RESEND_API_KEY`, `EMAIL_FROM="OnTour Upgrades <upgrades@ontour.vip>"`, `ADMIN_NOTIFY_EMAIL=eddie@please.co`
+   `NEXT_PUBLIC_SITE_URL=https://upgrades.ontour.vip`, `RESEND_API_KEY`, `EMAIL_FROM="OnTour Access <upgrades@ontour.vip>"`, `ADMIN_NOTIFY_EMAIL=eddie@please.co`
 3. Domains: add `upgrades.ontour.vip`. At GoDaddy, add the CNAME record Vercel shows (usually `upgrades` pointing to `cname.vercel-dns.com`).
 
 ### 4. Make yourself Super Admin

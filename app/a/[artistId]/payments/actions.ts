@@ -44,7 +44,7 @@ export async function startPayoutSetup(artistId: string, fd: FormData) {
         dashboard: "full",
         defaults: {
           responsibilities: { fees_collector: "stripe", losses_collector: "stripe" },
-          profile: { business_url: site, doing_business_as: artist.name, product_description: "VIP concert upgrades sold to fans through OnTour Upgrades" },
+          profile: { business_url: site, doing_business_as: artist.name, product_description: "VIP concert upgrades sold to fans through OnTour Access" },
         },
         configuration: { merchant: { mcc: "7929", capabilities: { card_payments: { requested: true } } } }, // 7929: bands, orchestras, entertainers
         metadata: { artist_id: artistId, handle: artist.handle },

@@ -6,17 +6,17 @@ type Ctx = { base: string; artistName: string; firstName: string | null; role: M
 
 /** The first-time tour, trimmed to what this person can do. */
 export function walkthroughSteps(c: Ctx): WalkStep[] {
-  const hi = c.firstName ? `Welcome, ${c.firstName}` : "Welcome to Upgrades";
+  const hi = c.firstName ? `Welcome, ${c.firstName}` : "Welcome to OnTour Access";
   if (c.role === "accountant") {
     return [
-      { icon: "dollar", eyebrow: "Welcome", title: hi, body: `You have read-only access to ${c.artistName}'s money on Upgrades. Here's where everything is.` },
+      { icon: "dollar", eyebrow: "Welcome", title: hi, body: `You have read-only access to ${c.artistName}'s money on OnTour Access. Here's where everything is.` },
       { icon: "dollar", eyebrow: "Financials", title: "Show settlements and tour totals", body: "See what each show sold, the fees, refunds and what's owed to the artist, then roll it up by tour and month.", cta: { label: "Open financials", href: `${c.base}/financials` } },
       { icon: "list", eyebrow: "Exports", title: "Payouts and year-end", body: "Match Stripe payouts to the shows they came from, and download year-end exports for taxes. Fan names and emails stay private.", cta: { label: "Open financials", href: `${c.base}/financials` } },
     ];
   }
   const owner = c.role === "owner" || c.role === "admin";
   const steps: WalkStep[] = [
-    { icon: "store", eyebrow: "Welcome", title: hi, body: `Upgrades lets ${c.artistName} sell VIP experiences straight to fans: meet & greets, soundchecks, early entry, merch bundles. Here's the one-minute tour.` },
+    { icon: "store", eyebrow: "Welcome", title: hi, body: `OnTour Access lets ${c.artistName} sell VIP experiences straight to fans: meet & greets, soundchecks, early entry, merch bundles. Here's the one-minute tour.` },
   ];
   if (owner) steps.push({ icon: "badge", eyebrow: "Step 1", title: "Get verified", done: c.approved,
     body: `Before your storefront goes live, P&T confirms you're really ${c.artistName}. Post a code on your socials, use an email on your website's domain, or have your manager or label confirm.`,

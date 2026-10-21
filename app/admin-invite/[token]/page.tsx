@@ -25,7 +25,7 @@ export default async function AdminInvite({ params, searchParams }: P) {
     );
   }
   return (
-    <AuthShell title="Become a P&T admin" subtitle={<>{inv.invited_by_name} invited <strong>{inv.email}</strong> to help run OnTour Upgrades.</>}>
+    <AuthShell title="Become a P&T admin" subtitle={<>{inv.invited_by_name} invited <strong>{inv.email}</strong> to help run OnTour Access.</>}>
       <Flash err={err} />
       {profile ? (
         profile.email === inv.email ? (

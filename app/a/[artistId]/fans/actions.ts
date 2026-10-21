@@ -44,7 +44,7 @@ export async function sendAnnouncement(artistId: string, fd: FormData) {
     body: [...(message ? [message] : []), `${f.name ? `Hi ${f.name.split(" ")[0]}, here` : "Here"}'s what's new from ${artist.name}. VIP spots are limited.`],
     tables: [{ head: ["Date", "City", "Venue", "VIP"], rows }],
     button: { label: one ? "Get VIP" : "See all dates", url },
-    footnote: `You're getting this because you follow ${artist.name} on OnTour Upgrades. Unsubscribe: ${siteUrl()}/unsubscribe/${f.token}`,
+    footnote: `You're getting this because you follow ${artist.name} on OnTour Access. Unsubscribe: ${siteUrl()}/unsubscribe/${f.token}`,
   })));
   if (sent) {
     await db.from("announcements").insert({ artist_id: artistId, show_ids: showIds, message: message || null, regions: regions.length ? regions : null, sent_to: sent, created_by: profile.id });

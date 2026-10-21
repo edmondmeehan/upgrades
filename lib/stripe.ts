@@ -10,7 +10,7 @@ export function getStripe(): Stripe | null {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   // Pinned so an SDK upgrade can't change API behavior without us noticing.
-  if (!client) client = new Stripe(key, { apiVersion: STRIPE_API_VERSION, appInfo: { name: "OnTour Upgrades", url: "https://upgrades.ontour.vip" } });
+  if (!client) client = new Stripe(key, { apiVersion: STRIPE_API_VERSION, appInfo: { name: "OnTour Access", url: "https://upgrades.ontour.vip" } });
   return client;
 }
 

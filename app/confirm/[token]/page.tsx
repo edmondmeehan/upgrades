@@ -25,7 +25,7 @@ export default async function Confirm({ params, searchParams }: P) {
   return (
     <AuthShell title={`Is this ${r.artist_name}'s team?`}>
       <p className="text-[15px]">
-        Someone is setting up VIP upgrades for <strong>{r.artist_name}</strong> ({r.website}) on OnTour Upgrades by Please &amp; Thank You,
+        Someone is setting up VIP upgrades for <strong>{r.artist_name}</strong> ({r.website}) on OnTour Access by Please &amp; Thank You,
         and listed you as their {r.relation}. Confirm only if they&apos;re authorized to sell upgrades for this artist.
       </p>
       <form action={confirmArtist.bind(null, token)}><SubmitButton size="lg" block pendingText="Confirming…">Yes, confirm {r.artist_name}</SubmitButton></form>

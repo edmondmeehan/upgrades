@@ -22,7 +22,7 @@ export async function reviewArtist(artistId: string, fd: FormData) {
   const link = `${siteUrl()}/a/${artistId}`;
   const name = owners?.[0]?.artists.name ?? "Your artist";
   const mail: Record<string, Parameters<typeof sendEmail>[0] | undefined> = {
-    approve: { to: "", subject: `${name} is verified on OnTour Upgrades`, eyebrow: "Verified", title: "You're approved",
+    approve: { to: "", subject: `${name} is verified on OnTour Access`, eyebrow: "Verified", title: "You're approved",
       body: [`${name} is verified. Your storefront is live, and every show you publish is listed there.`, "Next, set up payouts with Stripe and add your VIP packages so fans can start buying."],
       button: { label: "Open your dashboard", url: link } },
     reject: { to: "", subject: `${name} needs a few changes`, eyebrow: "Verification", title: "A few changes needed",
@@ -82,10 +82,10 @@ export async function inviteAdmin(fd: FormData) {
   if (error) redirect(withMsg("/admin/team", "err", cleanError(error)));
   const { sent, error: mailErr } = await sendEmail({
     to: email,
-    subject: "You've been invited to OnTour Upgrades admin",
+    subject: "You've been invited to OnTour Access admin",
     eyebrow: "Staff invitation",
     title: "Join the P&T admin team",
-    body: [`${profile.name ?? profile.email} invited you to be a P&T admin on OnTour Upgrades. Admins approve artists, set fees, and see platform finance.`],
+    body: [`${profile.name ?? profile.email} invited you to be a P&T admin on OnTour Access. Admins approve artists, set fees, and see platform finance.`],
     button: { label: "Accept invitation", url: `${siteUrl()}/admin-invite/${token}` },
     footnote: "This link works for 7 days. If you weren't expecting it, you can ignore this email.",
   });
@@ -114,8 +114,8 @@ export async function reactivateAdmin(userId: string) {
 export async function sendTestEmail() {
   const { profile } = await requireSuperAdmin();
   const { sent, error } = await sendEmail({
-    to: profile.email, subject: "OnTour Upgrades test email", eyebrow: "Test", title: "Email is working",
-    body: ["If you're reading this, OnTour Upgrades can send email from upgrades@ontour.vip."],
+    to: profile.email, subject: "OnTour Access test email", eyebrow: "Test", title: "Email is working",
+    body: ["If you're reading this, OnTour Access can send email from upgrades@ontour.vip."],
   });
   redirect(withMsg("/admin/team", sent ? "ok" : "err", sent
     ? `Test email sent to ${profile.email}. If it isn't in your inbox within a minute, check spam, then Resend's Emails page.`

@@ -23,7 +23,7 @@ export const MANUAL: { key: string; group: string; label: string; detail: string
   { key: "leaked_pw", group: "Data and accounts", label: "Leaked password protection is on", detail: "Supabase, Authentication, Attack Protection: switch on leaked password protection." },
   { key: "keys_rolled", group: "Data and accounts", label: "Exposed keys have been rolled", detail: "The Stripe key pasted in chat and the Resend key in the photos project's variable names." },
   { key: "connect_profile", group: "Stripe", label: "Stripe Connect platform profile is complete in live mode", detail: "Stripe (live), Connect: platform profile, branding, and support details filled in." },
-  { key: "legal", group: "Business", label: "Terms, privacy and purchase policy reviewed", detail: "The footer links go to please.co's policies. Confirm they cover OnTour Upgrades and that artists are the seller." },
+  { key: "legal", group: "Business", label: "Terms, privacy and purchase policy reviewed", detail: "The footer links go to please.co's policies. Confirm they cover OnTour Access and that artists are the seller." },
   { key: "sales_tax", group: "Business", label: "Sales tax approach decided", detail: "Whether to recommend artists switch on Stripe Tax (Payments page) for taxable packages like merch bundles." },
 ];
 

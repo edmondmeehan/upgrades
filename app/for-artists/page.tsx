@@ -17,7 +17,8 @@ export default async function ForArtists({ searchParams }: { searchParams: Promi
               <a href="https://help.please.co" className="fan-nav-btn solid"><Icon name="help" size={16} /><span>Support</span></a>
             </nav>
           </div>
-          <h1 className="home-title">VIP upgrades, run by you</h1>
+          <p className="mb-3 text-[13px] font-bold uppercase tracking-[0.12em] text-yellow">OnTour Access</p>
+          <h1 className="home-title">Your fans. Your experiences. Your platform.</h1>
           <p className="home-sub">
             Build your tour, set your own prices, check fans in from your phone, and send their meet &amp; greet photos after.
             Built by Please &amp; Thank You, who have run VIP on tour for more than 20 years.

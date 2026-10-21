@@ -186,10 +186,10 @@ export async function submitVerification(artistId: string, fd: FormData) {
   if (method === "third_party" && token) {
     await sendEmail({
       to: str(fd, "third_party_email"),
-      subject: `Please confirm ${artist.name} on OnTour Upgrades`,
+      subject: `Please confirm ${artist.name} on OnTour Access`,
       eyebrow: "Artist verification",
       title: `Is this ${artist.name}'s team?`,
-      body: [`Hi ${str(fd, "third_party_name")},`, `${profile.name ?? profile.email} (${profile.email}) is setting up VIP upgrades for ${artist.name} on OnTour Upgrades by Please & Thank You, and listed you as their ${str(fd, "third_party_relation") || "contact"}.`, `Confirm only if they're authorized to sell VIP upgrades for ${artist.name}.`],
+      body: [`Hi ${str(fd, "third_party_name")},`, `${profile.name ?? profile.email} (${profile.email}) is setting up VIP upgrades for ${artist.name} on OnTour Access by Please & Thank You, and listed you as their ${str(fd, "third_party_relation") || "contact"}.`, `Confirm only if they're authorized to sell VIP upgrades for ${artist.name}.`],
       button: { label: `Yes, confirm ${artist.name}`, url: `${siteUrl()}/confirm/${token}` },
       footnote: "If you don't recognize this, ignore this email and nothing will go live.",
     });
@@ -226,9 +226,9 @@ export async function inviteMember(artistId: string, fd: FormData) {
     : "access to set up shows, check-in details, scanning, and photos";
   const { sent, error: mailErr } = await sendEmail({
     to: email,
-    subject: `${artist.name} invited you to OnTour Upgrades`,
+    subject: `${artist.name} invited you to OnTour Access`,
     eyebrow: "Team invitation",
-    title: `Join ${artist.name} on OnTour Upgrades`,
+    title: `Join ${artist.name} on OnTour Access`,
     body: [`${profile.name ?? profile.email} added you to ${artist.name} as ${ROLE_LABEL[role].toLowerCase()}, with ${scope}.`],
     button: { label: "Accept invitation", url: link },
     footnote: "This link works for 14 days. Sign in or create an account with this email address to accept.",

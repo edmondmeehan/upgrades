@@ -21,7 +21,7 @@ export function artistNav(id: string, role: string): NavItem[] {
   const link = (path: string, label: string, icon: NavItem["icon"]): NavItem => ({ href: `${base}${path}`, label, icon });
   return [
     { href: base, label: "Overview", icon: "home", exact: true },
-    ...group("Shows & VIP", "calendar", [canEdit && link("/tours", "Tours & shows", "calendar"), canEdit && link("/packages", "VIP packages", "star"), owner && link("/storefront", "Storefront", "palette"), canEdit && link("/integrations", "Integrations", "grid")]),
+    ...group("Shows & VIP", "calendar", [canEdit && link("/tours", "Tours & shows", "calendar"), canEdit && link("/packages", "VIP packages", "star"), owner && link("/storefront", "Storefront", "palette"), canEdit && link("/links", "Links", "link"), canEdit && link("/integrations", "Integrations", "grid")]),
     ...group("Orders & fans", "users", [canEdit && link("/orders", "Orders", "list"), canEdit && link("/fans", "Fans", "users"), canEdit && link("/support", "Fan support", "help")]),
     ...group("Show day", "scan", [canEdit && link("/check-in", "Check-in", "scan"), canEdit && link("/photos", "Photos", "camera")]),
     ...group("Money", "dollar", [money && link("/financials", "Financials", "dollar"), money && link("/payments", "Payments", "card")]),
@@ -98,12 +98,12 @@ export function Shell(props: SideProps & { banner?: React.ReactNode; children: R
   const { children, banner, ...side } = props;
   const admin = side.mode === "admin";
   const home = admin ? "/admin" : "/dashboard";
-  const label = admin ? "Admin" : "Upgrades";
+  const label = admin ? "Admin" : "Access";
   return (
     <div className="shell">
       <aside className={`shell-side ${admin ? "!bg-navy !border-navy onDark" : ""}`} aria-label={admin ? "Admin" : "Main"}>
         <div className="flex items-center gap-2.5">
-          <Logo href={home} size={34} chip={!admin} label={admin ? "P&T admin home" : "OnTour Upgrades home"} />
+          <Logo href={home} size={34} chip={!admin} label={admin ? "P&T admin home" : "OnTour Access home"} />
           <span className={`text-[15px] font-extrabold ${admin ? "text-yellow" : ""}`}>{label}</span>
         </div>
         <div className={`contents ${admin ? "admin-side" : ""}`}><SideContent {...side} /></div>
@@ -111,7 +111,7 @@ export function Shell(props: SideProps & { banner?: React.ReactNode; children: R
       <div className="shell-main">
         <header className="shell-top onDark">
           <div className="flex items-center gap-2.5">
-            <Logo href={home} size={30} label={admin ? "P&T admin home" : "OnTour Upgrades home"} />
+            <Logo href={home} size={30} label={admin ? "P&T admin home" : "OnTour Access home"} />
             <span className={`text-[15px] font-extrabold ${admin ? "text-yellow" : "text-white"}`}>{label}</span>
           </div>
           <details className="mobile-menu">

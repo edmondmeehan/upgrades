@@ -91,7 +91,7 @@ export default async function Growth() {
             <ul className="divide-y divide-line">
               {g.items.map(({ r, s }) => {
                 const first = r.owner_name?.split(" ")[0] ?? "there";
-                const mail = `mailto:${r.owner_email}?subject=${encodeURIComponent(`${r.name} on OnTour Upgrades`)}&body=${encodeURIComponent(`Hi ${first},\n\n${s.nudge} and you'll be ready to sell VIP upgrades: https://upgrades.ontour.vip/a/${r.artist_id}\n\nAnything I can help with?\n\n`)}`;
+                const mail = `mailto:${r.owner_email}?subject=${encodeURIComponent(`${r.name} on OnTour Access`)}&body=${encodeURIComponent(`Hi ${first},\n\n${s.nudge} and you'll be ready to sell VIP upgrades: https://upgrades.ontour.vip/a/${r.artist_id}\n\nAnything I can help with?\n\n`)}`;
                 return (
                   <li key={r.artist_id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                     <span><Link href={`/admin/artists/${r.artist_id}`} className="font-bold">{r.name}</Link>

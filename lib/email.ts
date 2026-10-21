@@ -1,5 +1,5 @@
 /**
- * The one email layout every OnTour Upgrades email uses (our own emails through Resend, and the
+ * The one email layout every OnTour Access email uses (our own emails through Resend, and the
  * Supabase sign-in templates generated from it by scripts/build-auth-templates.mts).
  *
  * Built for email clients, not browsers: nested tables, inline styles, a bulletproof button that
@@ -142,7 +142,7 @@ ${code}${stats}${tables}${details}${images}${button}
 ${c.footnote ? `<p class="em-muted" style="margin:0;font-family:${FONT};font-size:13px;line-height:1.45;color:${C.muted}">${esc(c.footnote)}</p>` : ""}
 </td></tr>
 <tr><td class="em-muted" align="center" style="padding:20px 8px 0;font-family:${FONT};font-size:12px;line-height:1.6;color:${C.muted}">
-OnTour Upgrades by Please &amp; Thank You · <a class="em-link" href="${SUPPORT}" style="color:${C.violet}">Help</a><br>
+OnTour Access by Please &amp; Thank You · <a class="em-link" href="${SUPPORT}" style="color:${C.violet}">Help</a><br>
 Please &amp; Thank You, Inc., 1909 H Street, Sacramento, CA 95811
 </td></tr>
 </table>
@@ -158,7 +158,7 @@ Please &amp; Thank You, Inc., 1909 H Street, Sacramento, CA 95811
     ...(c.details ?? []).map(([k, v]) => `${k}: ${v}`), ...(c.details?.length ? [""] : []),
     ...(c.button ? [`${c.button.label}: ${c.button.url}`, ""] : []),
     ...(c.footnote ? [c.footnote, ""] : []),
-    "—", "OnTour Upgrades by Please & Thank You", `Help: ${SUPPORT}`,
+    "—", "OnTour Access by Please & Thank You", `Help: ${SUPPORT}`,
   ].join("\n");
   return { html, text };
 }

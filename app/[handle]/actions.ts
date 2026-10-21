@@ -103,7 +103,7 @@ export async function followArtist(handle: string, fd: FormData) {
   if (r.result !== "ok") redirect(`/${handle}`);
   if (!r.confirmed) {
     await sendEmail({
-      to: String(fd.get("email")).trim(), subject: `Confirm: follow ${r.artist_name} on OnTour Upgrades`,
+      to: String(fd.get("email")).trim(), subject: `Confirm: follow ${r.artist_name} on OnTour Access`,
       eyebrow: "Follow", title: `Get ${r.artist_name} VIP news first`,
       body: [`Confirm your email and we'll let you know when ${r.artist_name} announces new shows and VIP upgrades.`],
       button: { label: "Yes, follow", url: `${site()}/follow/${r.token}` },

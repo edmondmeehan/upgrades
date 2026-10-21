@@ -85,7 +85,7 @@ export default async function Promos({ searchParams }: { searchParams: Msg }) {
                 </p>
                 <div className="grid gap-2 rounded-2xl bg-paper p-3">
                   <p className="text-[13px]"><span className="font-bold">Sign-up link:</span> <span className="font-mono break-all">{link}</span></p>
-                  <ShareButtons url={link} title="Sell VIP upgrades on OnTour" text={`${promoSummary(c)} when you sell VIP upgrades on OnTour Upgrades. Code ${c.code}:`} />
+                  <ShareButtons url={link} title="Sell VIP upgrades on OnTour" text={`${promoSummary(c)} when you sell VIP upgrades on OnTour Access. Code ${c.code}:`} />
                 </div>
                 {used.length > 0 && (
                   <div className="overflow-x-auto">

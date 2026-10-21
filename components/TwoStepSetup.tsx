@@ -49,12 +49,12 @@ export function TwoStepSetup({ next, hasFactor }: { next: string; hasFactor: boo
             <li><b>2.</b> Add an account and scan this code.</li>
           </ol>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr!} alt="QR code to add OnTour Upgrades to your authenticator app" className="size-48 justify-self-center rounded-xl border border-line bg-white p-2" />
+          <img src={qr!} alt="QR code to add OnTour Access to your authenticator app" className="size-48 justify-self-center rounded-xl border border-line bg-white p-2" />
           {secret && <p className="help text-center">Can&apos;t scan? Enter this key: <span className="font-mono break-all">{secret}</span></p>}
           <p className="text-[15px]"><b>3.</b> Type the 6-digit code the app shows.</p>
         </>
       ) : (
-        <p className="text-[15px]">Open your authenticator app and type the 6-digit code for OnTour Upgrades.</p>
+        <p className="text-[15px]">Open your authenticator app and type the 6-digit code for OnTour Access.</p>
       )}
       {err && <p role="alert" className="alert alert-red">{err}</p>}
       <input value={code} onChange={(e) => setCode(e.target.value.replace(/[^\d\s]/g, "").slice(0, 7))} inputMode="numeric" autoComplete="one-time-code" autoFocus

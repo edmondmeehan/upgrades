@@ -39,7 +39,7 @@ export async function buildDailyReport(day: string): Promise<{ subject: string; 
   if (attention.length) body.push(`Needs attention: ${attention.join(", ")}.`);
 
   return {
-    subject: `OnTour Upgrades daily sales: ${$(r.gross_cents)} on ${new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`,
+    subject: `OnTour Access daily sales: ${$(r.gross_cents)} on ${new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })}`,
     content: {
       eyebrow: "Daily sales", title: label, preheader: body[0],
       body,

@@ -49,7 +49,7 @@ export function ogCard(s: Store, sh?: StoreShow) {
 
 export function ogFallback() {
   return new ImageResponse(
-    (<div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#130056", color: "#f2d64b", fontSize: 96, fontWeight: 800 }}>OnTour Upgrades</div>),
+    (<div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#130056", color: "#f2d64b", fontSize: 96, fontWeight: 800 }}>OnTour Access</div>),
     OG_SIZE,
   );
 }

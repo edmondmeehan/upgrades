@@ -1,6 +1,6 @@
-Magic link (magic-link.html): Your OnTour Upgrades sign-in link
-Confirm signup (confirm-signup.html): Confirm your OnTour Upgrades account
-Reset Password (reset-password.html): Reset your OnTour Upgrades password
+Magic link (magic-link.html): Your OnTour Access sign-in link
+Confirm signup (confirm-signup.html): Confirm your OnTour Access account
+Reset Password (reset-password.html): Reset your OnTour Access password
 Change Email Address (change-email.html): Confirm your new email address
-Invite user (invite.html): You've been invited to OnTour Upgrades
-Reauthentication (reauthentication.html): Your OnTour Upgrades verification code
+Invite user (invite.html): You've been invited to OnTour Access
+Reauthentication (reauthentication.html): Your OnTour Access verification code

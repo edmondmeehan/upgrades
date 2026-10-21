@@ -152,6 +152,6 @@ export async function syncDispute(dispute: Stripe.Dispute, accountId: string, op
         : "Include the order confirmation and anything showing the fan was told what the package includes.",
     ],
     button: { label: "Open Stripe disputes", url: "https://dashboard.stripe.com/disputes" },
-    footnote: "OnTour Upgrades keeps the order marked as disputed until Stripe closes it.",
+    footnote: "OnTour Access keeps the order marked as disputed until Stripe closes it.",
   });
 }

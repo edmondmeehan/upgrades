@@ -7,9 +7,9 @@ export function AuthShell({ title, subtitle, children }: { title: string; subtit
       <div className="onDark flex flex-col justify-between gap-6 bg-navy p-6 md:min-h-screen md:p-12">
         <Logo size={52} />
         <div className="grid gap-3">
-          <div className="text-[44px] font-extrabold uppercase leading-[0.9] tracking-[-0.03em] text-yellow md:text-[72px]">Upgrades</div>
+          <div className="text-[44px] font-extrabold uppercase leading-[0.9] tracking-[-0.03em] text-yellow md:text-[72px]">Access</div>
           <p className="hidden max-w-[380px] text-[17px] leading-normal text-[#d9d5e6] md:block">
-            Sell VIP upgrades at every show. Set your prices, check fans in, and deliver their photos after.
+            Your fans. Your experiences. Your platform. Sell VIP upgrades at every show, check fans in, and deliver their photos after.
           </p>
         </div>
         <p className="hidden text-[13px] text-[#b7b1cc] md:block">For artists and their teams</p>

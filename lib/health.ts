@@ -30,7 +30,7 @@ export async function markError(job: string, err: unknown) {
     const to = [...new Set([process.env.ADMIN_NOTIFY_EMAIL, ...(admins ?? []).map((a) => a.email)].filter(Boolean))] as string[];
     for (const email of to) {
       await sendEmail({
-        to: email, subject: `Upgrades alert: ${JOBS[job] ?? job} failed`,
+        to: email, subject: `OnTour Access alert: ${JOBS[job] ?? job} failed`,
         eyebrow: "System alert", title: `${JOBS[job] ?? job} failed`,
         body: [`It failed at ${now.toLocaleString("en-US", { timeZone: "America/New_York" })} Eastern with: ${message}`, "You won't get another alert for this for an hour. The System health card in P&T admin shows the latest status."],
         button: { label: "Open P&T admin", url: `${siteUrl()}/admin` },

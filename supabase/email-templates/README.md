@@ -1,6 +1,6 @@
 # Supabase sign-in emails
 
-These six templates are generated from the same layout as every other OnTour Upgrades email
+These six templates are generated from the same layout as every other OnTour Access email
 (`lib/email.ts`). To change them, edit `scripts/build-auth-templates.mts`, then run:
 
     NEXT_PUBLIC_SITE_URL=https://upgrades.ontour.vip node --experimental-strip-types scripts/build-auth-templates.mts
@@ -34,12 +34,12 @@ ontour.vip must have its Resend DNS records (DKIM, SPF, DMARC) for this address 
 
 | Supabase template | Subject | File |
 | --- | --- | --- |
-| Confirm signup | Confirm your OnTour Upgrades account | confirm-signup.html |
-| Invite user | You've been invited to OnTour Upgrades | invite.html |
-| Magic link | Your OnTour Upgrades sign-in link | magic-link.html |
+| Confirm signup | Confirm your OnTour Access account | confirm-signup.html |
+| Invite user | You've been invited to OnTour Access | invite.html |
+| Magic link | Your OnTour Access sign-in link | magic-link.html |
 | Change Email Address | Confirm your new email address | change-email.html |
-| Reset Password | Reset your OnTour Upgrades password | reset-password.html |
-| Reauthentication | Your OnTour Upgrades verification code | reauthentication.html |
+| Reset Password | Reset your OnTour Access password | reset-password.html |
+| Reauthentication | Your OnTour Access verification code | reauthentication.html |
 
 Leave the `{{ .ConfirmationURL }}`, `{{ .Email }}`, `{{ .NewEmail }}` and `{{ .Token }}` parts exactly as they are; Supabase fills them in.
 

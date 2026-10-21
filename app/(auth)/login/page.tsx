@@ -18,7 +18,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
         <SubmitButton size="lg" block pendingText="Signing in…">Sign in</SubmitButton>
         <SubmitButton variant="ghost" block pendingText="Sending…" formAction={sendMagicLink}>Email me a sign-in link</SubmitButton>
       </form>
-      <p className="help text-center">New to OnTour Upgrades? <Link href={`/signup?next=${encodeURIComponent(next)}`}>Create an account</Link></p>
+      <p className="help text-center">New to OnTour Access? <Link href={`/signup?next=${encodeURIComponent(next)}`}>Create an account</Link></p>
     </AuthShell>
   );
 }
