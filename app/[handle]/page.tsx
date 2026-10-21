@@ -1,3 +1,4 @@
+import { ArtistFooterColors } from "@/components/ArtistFooterColors";
 import { ArtistMedia, type Media } from "@/components/ArtistMedia";
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
@@ -28,6 +29,7 @@ export default async function Storefront({ params, searchParams }: { params: Pro
   const withPkgs = s.shows.filter((sh) => sh.packages.length > 0).length;
   return (
     <div className="min-h-screen bg-white" data-artist-page>
+      <ArtistFooterColors brand={t.brand} accent={t.accent} />
       <StoreHero s={s} t={t} follow={{ state: sp.followed, err: sp.follow_err }} />
       <main className="home-wrap py-8">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">

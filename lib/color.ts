@@ -32,3 +32,10 @@ export const PALETTES: { name: string; brand: string; accent: string }[] = [
   { name: "Chalk", brand: "#f5f1e8", accent: "#c8391a" },
   { name: "Electric", brand: "#2a0a6b", accent: "#3cf2a0" },
 ];
+
+/** Mix a color toward black by `amount` (0 to 1). */
+export function darken(hex: string, amount: number) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v: number) => Math.round(v * (1 - amount)).toString(16).padStart(2, "0");
+  return `#${ch((n >> 16) & 255)}${ch((n >> 8) & 255)}${ch(n & 255)}`;
+}

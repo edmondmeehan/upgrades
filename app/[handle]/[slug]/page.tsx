@@ -1,3 +1,4 @@
+import { ArtistFooterColors } from "@/components/ArtistFooterColors";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StoreHero, ShowCard, ArtistDisclaimer } from "@/components/StorefrontParts";
@@ -35,6 +36,7 @@ export default async function ShowStore({ params, searchParams }: P) {
   const others = s.shows.filter((x) => x.slug !== sh.slug).length;
   return (
     <div className="min-h-screen bg-white" data-artist-page>
+      <ArtistFooterColors brand={t.brand} accent={t.accent} />
       <StoreHero s={s} t={t} compact />
       <main className="home-wrap grid gap-6 py-8">
         <ul className="grid gap-5"><ShowCard sh={sh} s={s} t={t} linkTitle={false} err={q.err && q.pkg ? { pkg: q.pkg, msg: q.err.slice(0, 160) } : undefined}
