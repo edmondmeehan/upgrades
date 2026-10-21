@@ -1,3 +1,5 @@
+import { ArtistMedia, type Media } from "@/components/ArtistMedia";
+import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { StoreHero, TourDates, ArtistDisclaimer } from "@/components/StorefrontParts";
@@ -16,9 +18,12 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 }
 
 export default async function Storefront({ params, searchParams }: { params: Promise<{ handle: string }>; searchParams: Promise<{ followed?: string; follow_err?: string }> }) {
-  const s = await loadStore((await params).handle);
+  const handle = (await params).handle;
+  const s = await loadStore(handle);
   const sp = await searchParams;
   if (!s) notFound();
+  const supabase = await createClient();
+  const { data: media } = await supabase.rpc("storefront_media", { p_handle: handle });
   const t = theme(s);
   const withPkgs = s.shows.filter((sh) => sh.packages.length > 0).length;
   return (
@@ -38,6 +43,7 @@ export default async function Storefront({ params, searchParams }: { params: Pro
         ) : (
           <TourDates s={s} t={t} />
         )}
+        <ArtistMedia m={media as Media | null} name={s.name} t={t} />
       </main>
       <ArtistDisclaimer name={s.name} handle={s.handle} />
     </div>
