@@ -21,7 +21,7 @@ export async function notifyWaitlist(showProductId: string): Promise<number> {
     const date = new Date(`${s.show_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
     const where = `${s.city ?? ""}${s.region ? `, ${s.region}` : ""}`;
     const url = `${siteUrl()}/${a.handle}/${s.slug}#p-${showProductId}`;
-    const { sent, error } = await sendEmailBatch(list.map((w) => ({
+    const { sent, error, skipped, failed } = await sendEmailBatch(list.map((w) => ({
       to: w.email, replyTo: a.support_email ?? undefined,
       subject: `VIP spots just opened: ${a.name}, ${where}`,
       eyebrow: "Waitlist", title: `Spots opened for ${x.products.name}`,
@@ -33,6 +33,12 @@ export async function notifyWaitlist(showProductId: string): Promise<number> {
       button: { label: "Get VIP now", url },
       footnote: `Don't want these emails? Leave the waitlist: ${siteUrl()}/waitlist/leave/${w.token}`,
     })));
+    // Only people whose email actually went out count as notified: failures go back in line,
+    // and addresses that can never be delivered come off the list.
+    const byEmail = (emails: string[]) => list.filter((w) => emails.includes(w.email)).map((w) => w.id);
+    if (skipped.length || failed.length) {
+      await db.rpc("settle_waitlist_notifications", { p_retry: byEmail(failed), p_bad: byEmail(skipped) });
+    }
     if (error && !sent) await markError("waitlist", error); else await markOk("waitlist");
     return sent;
   } catch (e) {

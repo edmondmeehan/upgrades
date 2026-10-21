@@ -203,13 +203,26 @@ export async function sendEmail({ to, subject, replyTo, headers, ...content }: E
 type Outgoing = EmailContent & { to: string; subject: string; replyTo?: string; headers?: Record<string, string> };
 
 /** Sends many emails through Resend's batch endpoint (100 per request). Returns how many were accepted. */
-export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: number; error?: string }> {
+/** Whether an address can be delivered to (and won't make Resend reject a whole batch). */
+export const deliverable = (email: string) => /^[^@\s<>"]+@[^@\s<>"]+\.[A-Za-z]{2,}$/.test(email.trim());
+
+/**
+ * Sends many emails through Resend's batch endpoint (100 per request). Addresses that can't be
+ * delivered are skipped first, because one bad address makes Resend reject the whole batch.
+ * Returns how many were accepted, and which recipients were skipped or failed.
+ */
+export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: number; error?: string; skipped: string[]; failed: string[] }> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || "Please & Thank You <upgrades@ontour.vip>";
-  if (!key) { messages.forEach((m) => console.log(`[email:dev] to=${m.to} subject: ${m.subject}`)); return { sent: 0, error: "email isn't connected" }; }
+  const skipped = messages.filter((m) => !deliverable(m.to)).map((m) => m.to);
+  const good = messages.filter((m) => deliverable(m.to));
+  if (skipped.length) console.warn(`[email batch] skipped ${skipped.length} undeliverable address(es): ${skipped.join(", ")}`);
+  if (!key) { good.forEach((m) => console.log(`[email:dev] to=${m.to} subject: ${m.subject}`)); return { sent: 0, error: "email isn't connected", skipped, failed: good.map((m) => m.to) }; }
   let sent = 0, error: string | undefined;
-  for (let i = 0; i < messages.length; i += 100) {
-    const chunk = messages.slice(i, i + 100).map(({ to, subject, replyTo, headers, ...content }) => {
+  const failed: string[] = [];
+  for (let i = 0; i < good.length; i += 100) {
+    const part = good.slice(i, i + 100);
+    const chunk = part.map(({ to, subject, replyTo, headers, ...content }) => {
       const { html, text } = renderEmail(content);
       return { from, to, subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}), ...(headers ? { headers } : {}) };
     });
@@ -223,10 +236,11 @@ export async function sendEmailBatch(messages: Outgoing[]): Promise<{ sent: numb
         console.log(`[email] batch sent ${chunk.length}: "${chunk[0]?.subject}"${j.data?.length ? ` (Resend ids ${j.data.map((d) => d.id).join(", ")})` : ""}`);
       } else {
         error = `Resend ${res.status}: ${(await res.text()).slice(0, 200)}`;
+        failed.push(...part.map((m) => m.to));
         console.error("[email batch]", error);
         import("@/lib/health").then((m) => m.markError("email", error)).catch(() => null);
       }
-    } catch (e) { error = "network"; console.error("[email batch]", e); import("@/lib/health").then((m) => m.markError("email", e)).catch(() => null); }
+    } catch (e) { error = "network"; failed.push(...part.map((m) => m.to)); console.error("[email batch]", e); import("@/lib/health").then((m) => m.markError("email", e)).catch(() => null); }
   }
-  return { sent, error };
+  return { sent, error, skipped, failed };
 }
