@@ -11,8 +11,8 @@ export function SiteFooter() {
     <footer className="site-footer onDark">
       <div className="site-footer-in">
         <p className="site-footer-from">
-          OnTour Access is a product from your friends at <a href="https://please.co" target="_blank" rel="noopener noreferrer">Please &amp; Thank You</a>.
-          {" "}© {new Date().getFullYear()} Please &amp; Thank You. All Rights Reserved.
+          OnTour Access is a product from your friends at <a href="https://please.co/" target="_blank" rel="noopener noreferrer">Please &amp; Thank You</a>.
+          {" "}© {new Date().getFullYear()}. All Rights Reserved.
         </p>
         <nav aria-label="Legal">
           <ul>{LINKS.map(([label, href]) => <li key={href} className={label === "Help" ? "footer-help" : undefined}><a href={href} target="_blank" rel="noopener noreferrer">{label}</a></li>)}</ul>
